@@ -1,0 +1,56 @@
+{
+  "description": "Defines the schema for the `BackupJob` API.",
+  "properties": {
+    "apiVersion": {
+      "description": "APIVersion defines the versioned schema of this representation of an object.\nServers should convert recognized schemas to the latest internal value, and\nmay reject unrecognized values.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+      "type": "string"
+    },
+    "kind": {
+      "description": "Kind is a string value representing the REST resource this object represents.\nServers may infer this from the endpoint the client submits requests to.\nCannot be updated.\nIn CamelCase.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "spec": {
+      "description": "Defines the desired state of the backup job.",
+      "properties": {
+        "backupName": {
+          "description": "The control plane backup name that the backup job is executing against.\nThe name is immutable.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "backupName"
+      ],
+      "type": "object",
+      "additionalProperties": false
+    },
+    "status": {
+      "description": "Defines the observed state of the backup job.",
+      "properties": {
+        "message": {
+          "description": "A human-readable message indicating details about why the backup is in this state.",
+          "type": "string"
+        },
+        "phase": {
+          "description": "The current phase of the backup.",
+          "enum": [
+            "New",
+            "InProgress",
+            "Succeeded",
+            "Failed"
+          ],
+          "type": "string"
+        },
+        "reason": {
+          "description": "A brief camel case string that describes any update and is used\nfor machine parsing and tidy display.",
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false
+    }
+  },
+  "type": "object"
+}

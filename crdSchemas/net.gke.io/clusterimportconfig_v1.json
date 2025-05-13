@@ -1,0 +1,44 @@
+{
+  "properties": {
+    "spec": {
+      "properties": {
+        "clusteripranges": {
+          "items": {
+            "properties": {
+              "cidrs": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "cluster": {
+                "type": "string"
+              }
+            },
+            "type": "object",
+            "additionalProperties": false
+          },
+          "type": "array"
+        },
+        "networks": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "zones": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "spec"
+  ],
+  "type": "object"
+}

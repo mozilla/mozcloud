@@ -1,0 +1,47 @@
+{
+  "properties": {
+    "spec": {
+      "properties": {
+        "clusters": {
+          "items": {
+            "properties": {
+              "link": {
+                "type": "string"
+              }
+            },
+            "type": "object",
+            "additionalProperties": false
+          },
+          "type": "array"
+        },
+        "template": {
+          "properties": {
+            "spec": {
+              "properties": {
+                "ports": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "selector": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                }
+              },
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "type": "object",
+      "additionalProperties": false
+    }
+  },
+  "type": "object"
+}

@@ -1,0 +1,47 @@
+{
+  "properties": {
+    "spec": {
+      "properties": {
+        "clusters": {
+          "items": {
+            "properties": {
+              "capacityScaler": {
+                "type": "string"
+              },
+              "clusterName": {
+                "type": "string"
+              },
+              "maxRate": {
+                "type": "string"
+              },
+              "maxRatePerEndpoint": {
+                "type": "string"
+              },
+              "membershipName": {
+                "type": "string"
+              },
+              "neg": {
+                "type": "string"
+              }
+            },
+            "type": "object",
+            "additionalProperties": false
+          },
+          "type": "array"
+        },
+        "negs": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "spec"
+  ],
+  "type": "object"
+}

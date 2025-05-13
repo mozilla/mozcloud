@@ -1,0 +1,242 @@
+{
+  "description": "RestoreJob is the Schema for the restorejobs API",
+  "properties": {
+    "apiVersion": {
+      "description": "APIVersion defines the versioned schema of this representation of an object.\nServers should convert recognized schemas to the latest internal value, and\nmay reject unrecognized values.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+      "type": "string"
+    },
+    "kind": {
+      "description": "Kind is a string value representing the REST resource this object represents.\nServers may infer this from the endpoint the client submits requests to.\nCannot be updated.\nIn CamelCase.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "spec": {
+      "description": "RestoreJobSpec defines the desired state of restoration.",
+      "properties": {
+        "gcpRestoreName": {
+          "description": "GCPRestoreName is the fully qualified GCP Restore name that the RestoreJob is\nexecuting against. The name is immutable and follows the pattern below:\nprojects/{project_id}/locations/{location_id}/restores/{restoreId}",
+          "type": "string"
+        },
+        "policies": {
+          "description": "Policies specifies a collection of policies to apply during restoration.\nIncluding:\n1. VolumeDataRestorePolicy which specifies how volume data should be handled,\n2. ClusterResourceConflictPolicy which specifies how to resolve conflicts\n   when restoring cluster resources.\n3. NamespacedResourceRestoreMode which specifies the restoration mode\n.   for namespaced resources.\nIf not specified, VolumeDataRestorePolicy will default to NoVolumeDataRestoration,\nClusterResourceConflictPolicy will default to UseExistingVersion, and\nNamespacedResourceRestoreMode will default to FailOnConflict.",
+          "properties": {
+            "clusterResourcePolicy": {
+              "description": "ClusterResourcePolicy specifies the policy to resolve conflicts\nwhen restore cluster-scoped resources.\nDefault to UseExistingVersion if not specified.",
+              "enum": [
+                "UseExistingVersion",
+                "UseBackupVersion"
+              ],
+              "type": "string"
+            },
+            "namespacedResourceRestoreMode": {
+              "description": "NamespacedResourceRestoreMode specifies the restoration mode for\nnamespaced resources.\nDefault to FailOnConflict if not specified.",
+              "enum": [
+                "DeleteAndRestore",
+                "FailOnConflict"
+              ],
+              "type": "string"
+            },
+            "volumePolicy": {
+              "description": "VolumePolicy specifies the policy to use for volume data restoration.\nDefault to \"NoVolumeDataRestoration\" if not specified.",
+              "enum": [
+                "NoVolumeDataRestoration",
+                "ReuseVolumeHandleFromBackup",
+                "RestoreVolumeDataFromBackup"
+              ],
+              "type": "string"
+            }
+          },
+          "type": "object",
+          "additionalProperties": false
+        },
+        "resources": {
+          "description": "Resources specifies the selection of resources to be restored.",
+          "properties": {
+            "clusterResources": {
+              "description": "ClusterResources specifies the selected non-namespaced Kubernetes\nresources in the Backup to restore.",
+              "properties": {
+                "selectedGroupKinds": {
+                  "description": "A list of GroupKinds, a non-namespaces resource MUST be of one of the\nGroupKind specified in the list to be restored.\nNOTE: PersistentVolume resources, though are non-namespaced, will be\nhandled separately. See VolumeDataRestorePolicy for details. Specifying\nPersistentVolume GroupKind in this list does NOT affect whether or\nnot a PersistentVolume will be restored.",
+                  "items": {
+                    "description": "GroupKind specifies a Group and a Kind, but does not force a version.  This is useful for identifying\nconcepts during lookup stages without having partially valid types",
+                    "properties": {
+                      "group": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "group",
+                      "kind"
+                    ],
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  "type": "array"
+                }
+              },
+              "type": "object",
+              "additionalProperties": false
+            },
+            "namespacedResources": {
+              "description": "NamespacedResources specifies the selected namespaces Kubernetes\nresources in the Backup to restore.",
+              "properties": {
+                "allNamespaces": {
+                  "description": "AllNamespaces specifies whether or not to restore all namespaced\nresources in the Backup.\nNot specifying this field or specifying it to \"False\" with Type\nspecified as NamespacedResourceSelectionType.AllNamespaces\nwould be treated as invalid.",
+                  "type": "boolean"
+                },
+                "selectedApplications": {
+                  "description": "A list of selected ProtectedApplication to restore. If specified\nalong with Type set to NamespacedResourceSelectionType.SelectedApplications,\nonly the resources belong to one of the listed application will\nbe restored.",
+                  "items": {
+                    "description": "NamespacedName contains the namespace and the name of the resource.",
+                    "properties": {
+                      "name": {
+                        "description": "Name string. Required.",
+                        "type": "string"
+                      },
+                      "namespace": {
+                        "description": "Namespace string. Required.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "namespace"
+                    ],
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  "type": "array"
+                },
+                "selectedNamespaces": {
+                  "description": "A list of selected namespaces to restore. If specified along with\nType set to NamespacedResourceSelectionType.SelectedNamespaces,\nonly the resources with original namespace as one of the specified\nin the list will be restored.\nNote that specifying an empty string(i.e., \"\") in this list does\nNOT mean to restore cluster(non-namespaced) resources. To restore\ncluster resources, see \"ClusterResourceSelection\".",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "type": {
+                  "description": "NamespacedResourceSelectionType is the type of namespaced resources selection.",
+                  "enum": [
+                    "AllNamespaces",
+                    "SelectedNamespaces",
+                    "SelectedApplications"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "type": "object",
+          "additionalProperties": false
+        },
+        "substitutionRules": {
+          "description": "SubstitutionRules specifies rules to apply to resources to\nsubstitute fields during restoration.\nIf not specified, original resources are assumed.",
+          "items": {
+            "description": "SubstitutionRule defines rules of substitution.",
+            "properties": {
+              "newValue": {
+                "description": "NewValue specifies the desired value in string format to substitute to.",
+                "type": "string"
+              },
+              "originValuePattern": {
+                "description": "OriginalValuePattern is a regex pattern string which will be applied to\na JSON value matched from supplied \"Target\". If not specified, the original\nvalue will be substituted using the specified \"NewValue\" regardless.\nNOTE: empty string is a legit regex pattern, and will be treated the same\n      as any other strings.",
+                "type": "string"
+              },
+              "target": {
+                "description": "Target specifies matching criteria to check whether a resource is a substitution\ncandidate and has field(s) which matches supplied \"JSONPath\"",
+                "properties": {
+                  "groupKinds": {
+                    "description": "GroupKinds, if not empty, specifies a list of target GroupKinds a substitution\nrule will apply to. A resource's original GroupKind should match ONE of the\nGroupKinds specified in the list to be considered as a substitution candidate.\nIf empty, all GroupKinds will be considred.\nNOTE: A resource needs to satisfy both Namespaces requirement AND GroupKinds\n      requirement to be considered as a substitution candidate.",
+                    "items": {
+                      "description": "GroupKind specifies a Group and a Kind, but does not force a version.  This is useful for identifying\nconcepts during lookup stages without having partially valid types",
+                      "properties": {
+                        "group": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "group",
+                        "kind"
+                      ],
+                      "type": "object",
+                      "additionalProperties": false
+                    },
+                    "type": "array"
+                  },
+                  "jsonPath": {
+                    "description": "JSONPath is the string representation of the JSON Path which leads to the\nfield(s) in the target resource's JSON format for substitution.",
+                    "type": "string"
+                  },
+                  "namespaces": {
+                    "description": "Namespaces, if not empty, specifies a list of target namespaces a\nsubstitution rule will apply to. A resource's original namespace should\nmatch ONE of the names in the list to be considered as a substitution\ncandidate. An empty string is expected in the list for any non-namespaced\nresource to be considered.\nIf empty, all namespaces will be considered.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "jsonPath"
+                ],
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "newValue",
+              "target"
+            ],
+            "type": "object",
+            "additionalProperties": false
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "gcpRestoreName",
+        "resources"
+      ],
+      "type": "object",
+      "additionalProperties": false
+    },
+    "status": {
+      "description": "RestoreJobStatus defines the observed state of a RestoreJob.",
+      "properties": {
+        "message": {
+          "description": "Message is a human-readable message indicating details about why backup\nrestoration is in this state.",
+          "type": "string"
+        },
+        "phase": {
+          "description": "Phase represents the current status of a backup.",
+          "enum": [
+            "New",
+            "InProgress",
+            "Succeeded",
+            "Failed"
+          ],
+          "type": "string"
+        },
+        "reason": {
+          "description": "Reason is a brief CamelCase string that describes any update and is meant\nfor machine parsing and tidy display.",
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false
+    }
+  },
+  "type": "object"
+}

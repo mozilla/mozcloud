@@ -1,0 +1,95 @@
+{
+  "properties": {
+    "spec": {
+      "properties": {
+        "template": {
+          "properties": {
+            "spec": {
+              "properties": {
+                "backend": {
+                  "properties": {
+                    "serviceName": {
+                      "type": "string"
+                    },
+                    "servicePort": {
+                      "x-kubernetes-int-or-string": true
+                    }
+                  },
+                  "type": "object",
+                  "additionalProperties": false
+                },
+                "rules": {
+                  "items": {
+                    "properties": {
+                      "host": {
+                        "type": "string"
+                      },
+                      "http": {
+                        "properties": {
+                          "paths": {
+                            "items": {
+                              "properties": {
+                                "backend": {
+                                  "properties": {
+                                    "serviceName": {
+                                      "type": "string"
+                                    },
+                                    "servicePort": {
+                                      "x-kubernetes-int-or-string": true
+                                    }
+                                  },
+                                  "type": "object",
+                                  "additionalProperties": false
+                                },
+                                "path": {
+                                  "type": "string"
+                                }
+                              },
+                              "type": "object",
+                              "additionalProperties": false
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "type": "object",
+                        "additionalProperties": false
+                      }
+                    },
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  "type": "array"
+                },
+                "tls": {
+                  "items": {
+                    "properties": {
+                      "hosts": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "secretName": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  "type": "array"
+                }
+              },
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "type": "object",
+      "additionalProperties": false
+    }
+  },
+  "type": "object"
+}
