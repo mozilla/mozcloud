@@ -1,0 +1,660 @@
+{
+  "description": "Defines the schema for the `Protectedapplication` API.",
+  "properties": {
+    "apiVersion": {
+      "description": "APIVersion defines the versioned schema of this representation of an object.\nServers should convert recognized schemas to the latest internal value, and\nmay reject unrecognized values.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+      "type": "string"
+    },
+    "kind": {
+      "description": "Kind is a string value representing the REST resource this object represents.\nServers may infer this from the endpoint the client submits requests to.\nCannot be updated.\nIn CamelCase.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "spec": {
+      "description": "Defines relevant resources that belong to a `ProtectedApplication`,\nand how the given application must be backed up or restored.",
+      "properties": {
+        "components": {
+          "description": "The components of this protected application.",
+          "items": {
+            "description": "Defines a subset of application resources and their backup and\nrestore strategies. An individual component is represented either by\na list of `StatefulSet` or `Deployment` resources.",
+            "properties": {
+              "name": {
+                "description": "The unique name of this component.",
+                "type": "string"
+              },
+              "resourceKind": {
+                "description": "The kind of resources included in this component.\nThe resource kind can only be `Deployment` or `StatefulSet` or `Pod`.\nThe `Pod` resource kind only supports the `BackupAllRestoreAll` strategy at this time.",
+                "enum": [
+                  "Deployment",
+                  "StatefulSet",
+                  "Pod"
+                ],
+                "type": "string"
+              },
+              "resourceNames": {
+                "description": "The names of resources which belong to this component.\nIt must be a list of names of `Deployment`, `StatefulSet`, or `Pod` resources\nbased on what is defined in the `resourceKind` field.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "strategy": {
+                "description": "The details of how to back up and restore this component.",
+                "properties": {
+                  "backupAllRestoreAll": {
+                    "description": "A strategy that backs up everything selected in\nthis component, and restores everything during restoration.",
+                    "properties": {
+                      "backupPostHooks": {
+                        "description": "A list of hooks that are executed after all\nvolumes of this component are backed up. These are usually the un-quiesce steps.\nThe execution target Pods are all Pods within this component.",
+                        "items": {
+                          "description": "Defines how a hook is executed in a selected container, assuming\nthe target Pod has been selected.",
+                          "properties": {
+                            "command": {
+                              "description": "The command to execute. The hook command to run.\nFor example, `[\"/sbin/fsfreeze\", \"--freeze\"]`.",
+                              "items": {
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            "container": {
+                              "description": "The container that this hook executes on. If unspecified, it executes on\nthe first container of the Pod.",
+                              "type": "string"
+                            },
+                            "name": {
+                              "description": "The name of this hook. This field is used to identify the status of hook execution,\nand any errors that are encountered.",
+                              "type": "string"
+                            },
+                            "onError": {
+                              "description": "The desired behavior to follow when the hook execution runs into an error.\nValid values are `Ignore` or `Fail`. If unspecified, the value will be `Fail`.",
+                              "enum": [
+                                "Ignore",
+                                "Fail"
+                              ],
+                              "type": "string"
+                            },
+                            "timeoutSeconds": {
+                              "description": "The timeout of the hook in seconds. If unspecified,\nthe default value is `30`.",
+                              "format": "int32",
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "command",
+                            "name"
+                          ],
+                          "type": "object",
+                          "additionalProperties": false
+                        },
+                        "type": "array"
+                      },
+                      "backupPreHooks": {
+                        "description": "A list of hooks that are executed before\nbacking up all selected volumes of this component. These are usually\nthe quiesce steps.\nThe execution target Pods are all Pods within this component.",
+                        "items": {
+                          "description": "Defines how a hook is executed in a selected container, assuming\nthe target Pod has been selected.",
+                          "properties": {
+                            "command": {
+                              "description": "The command to execute. The hook command to run.\nFor example, `[\"/sbin/fsfreeze\", \"--freeze\"]`.",
+                              "items": {
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            "container": {
+                              "description": "The container that this hook executes on. If unspecified, it executes on\nthe first container of the Pod.",
+                              "type": "string"
+                            },
+                            "name": {
+                              "description": "The name of this hook. This field is used to identify the status of hook execution,\nand any errors that are encountered.",
+                              "type": "string"
+                            },
+                            "onError": {
+                              "description": "The desired behavior to follow when the hook execution runs into an error.\nValid values are `Ignore` or `Fail`. If unspecified, the value will be `Fail`.",
+                              "enum": [
+                                "Ignore",
+                                "Fail"
+                              ],
+                              "type": "string"
+                            },
+                            "timeoutSeconds": {
+                              "description": "The timeout of the hook in seconds. If unspecified,\nthe default value is `30`.",
+                              "format": "int32",
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "command",
+                            "name"
+                          ],
+                          "type": "object",
+                          "additionalProperties": false
+                        },
+                        "type": "array"
+                      },
+                      "volumeSelector": {
+                        "description": "A label selector that is used to select persistent\nvolumes that are backed up and restored within this component.\nAll persistent volumes are selected if this is not provided.",
+                        "properties": {
+                          "matchExpressions": {
+                            "description": "matchExpressions is a list of label selector requirements. The requirements are ANDed.",
+                            "items": {
+                              "description": "A label selector requirement is a selector that contains values, a key, and an operator that\nrelates the key and values.",
+                              "properties": {
+                                "key": {
+                                  "description": "key is the label key that the selector applies to.",
+                                  "type": "string"
+                                },
+                                "operator": {
+                                  "description": "operator represents a key's relationship to a set of values.\nValid operators are In, NotIn, Exists and DoesNotExist.",
+                                  "type": "string"
+                                },
+                                "values": {
+                                  "description": "values is an array of string values. If the operator is In or NotIn,\nthe values array must be non-empty. If the operator is Exists or DoesNotExist,\nthe values array must be empty. This array is replaced during a strategic\nmerge patch.",
+                                  "items": {
+                                    "type": "string"
+                                  },
+                                  "type": "array"
+                                }
+                              },
+                              "required": [
+                                "key",
+                                "operator"
+                              ],
+                              "type": "object",
+                              "additionalProperties": false
+                            },
+                            "type": "array"
+                          },
+                          "matchLabels": {
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "description": "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels\nmap is equivalent to an element of matchExpressions, whose key field is \"key\", the\noperator is \"In\", and the values array contains only \"value\". The requirements are ANDed.",
+                            "type": "object"
+                          }
+                        },
+                        "type": "object",
+                        "x-kubernetes-map-type": "atomic",
+                        "additionalProperties": false
+                      }
+                    },
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  "backupOneRestoreAll": {
+                    "description": "A strategy that only backs up volumes from one Pod\nwithin this component, and are restored to all other Pods during\nrestoration. This strategy is used for applications that are deployed\nin a high availability configuration of one primary and one or more secondaries. This strategy is\nexclusively applicable to `StatefulSet` components that use a defined\n`volumeClaimTemplate` resource to provision volumes.",
+                    "properties": {
+                      "backupPostHooks": {
+                        "description": "A list of hooks that are executed after all\nvolumes of this component are backed up. These are usually the un-quiesce steps.\nHooks are only executed on selected backup Pod.",
+                        "items": {
+                          "description": "Defines how a hook is executed in a selected container, assuming\nthe target Pod has been selected.",
+                          "properties": {
+                            "command": {
+                              "description": "The command to execute. The hook command to run.\nFor example, `[\"/sbin/fsfreeze\", \"--freeze\"]`.",
+                              "items": {
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            "container": {
+                              "description": "The container that this hook executes on. If unspecified, it executes on\nthe first container of the Pod.",
+                              "type": "string"
+                            },
+                            "name": {
+                              "description": "The name of this hook. This field is used to identify the status of hook execution,\nand any errors that are encountered.",
+                              "type": "string"
+                            },
+                            "onError": {
+                              "description": "The desired behavior to follow when the hook execution runs into an error.\nValid values are `Ignore` or `Fail`. If unspecified, the value will be `Fail`.",
+                              "enum": [
+                                "Ignore",
+                                "Fail"
+                              ],
+                              "type": "string"
+                            },
+                            "timeoutSeconds": {
+                              "description": "The timeout of the hook in seconds. If unspecified,\nthe default value is `30`.",
+                              "format": "int32",
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "command",
+                            "name"
+                          ],
+                          "type": "object",
+                          "additionalProperties": false
+                        },
+                        "type": "array"
+                      },
+                      "backupPreHooks": {
+                        "description": "A list of hooks that are executed before\nbacking up all selected volumes of this component. These are usually\nthe quiesce steps.\nHooks are only executed on the selected backup Pod.",
+                        "items": {
+                          "description": "Defines how a hook is executed in a selected container, assuming\nthe target Pod has been selected.",
+                          "properties": {
+                            "command": {
+                              "description": "The command to execute. The hook command to run.\nFor example, `[\"/sbin/fsfreeze\", \"--freeze\"]`.",
+                              "items": {
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            "container": {
+                              "description": "The container that this hook executes on. If unspecified, it executes on\nthe first container of the Pod.",
+                              "type": "string"
+                            },
+                            "name": {
+                              "description": "The name of this hook. This field is used to identify the status of hook execution,\nand any errors that are encountered.",
+                              "type": "string"
+                            },
+                            "onError": {
+                              "description": "The desired behavior to follow when the hook execution runs into an error.\nValid values are `Ignore` or `Fail`. If unspecified, the value will be `Fail`.",
+                              "enum": [
+                                "Ignore",
+                                "Fail"
+                              ],
+                              "type": "string"
+                            },
+                            "timeoutSeconds": {
+                              "description": "The timeout of the hook in seconds. If unspecified,\nthe default value is `30`.",
+                              "format": "int32",
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "command",
+                            "name"
+                          ],
+                          "type": "object",
+                          "additionalProperties": false
+                        },
+                        "type": "array"
+                      },
+                      "backupTargetName": {
+                        "description": "The name of the preferred `Deployment` or `StatefulSet` resource\nthat is used for backup. We selectthe  target Pod based on how this\ncomponent is composed.\nFor multi-`Deployment`, pick the only Pod created by this `Deployment` resource.\nFor multi-`StatefulSet`, pick the first Pod created by the target `StatefulSet` resource.\nFor single-`StatefulSet`, pick the second Pod created by the target `StatefulSet` resource.",
+                        "type": "string"
+                      },
+                      "volumeSelector": {
+                        "description": "A label selector that is used to select all\npersistent volumes that are backed up within the target Pod. It is\npossible that the selector will select volumes outside of the target Pod, but\nonly volumes belonging to the target Pod are backed up. Those\nvolume backups are restored to all other volumes selected by the\nselector during restoration. All persistent volumes are selected if\nthis is not provided.",
+                        "properties": {
+                          "matchExpressions": {
+                            "description": "matchExpressions is a list of label selector requirements. The requirements are ANDed.",
+                            "items": {
+                              "description": "A label selector requirement is a selector that contains values, a key, and an operator that\nrelates the key and values.",
+                              "properties": {
+                                "key": {
+                                  "description": "key is the label key that the selector applies to.",
+                                  "type": "string"
+                                },
+                                "operator": {
+                                  "description": "operator represents a key's relationship to a set of values.\nValid operators are In, NotIn, Exists and DoesNotExist.",
+                                  "type": "string"
+                                },
+                                "values": {
+                                  "description": "values is an array of string values. If the operator is In or NotIn,\nthe values array must be non-empty. If the operator is Exists or DoesNotExist,\nthe values array must be empty. This array is replaced during a strategic\nmerge patch.",
+                                  "items": {
+                                    "type": "string"
+                                  },
+                                  "type": "array"
+                                }
+                              },
+                              "required": [
+                                "key",
+                                "operator"
+                              ],
+                              "type": "object",
+                              "additionalProperties": false
+                            },
+                            "type": "array"
+                          },
+                          "matchLabels": {
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "description": "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels\nmap is equivalent to an element of matchExpressions, whose key field is \"key\", the\noperator is \"In\", and the values array contains only \"value\". The requirements are ANDed.",
+                            "type": "object"
+                          }
+                        },
+                        "type": "object",
+                        "x-kubernetes-map-type": "atomic",
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "backupTargetName"
+                    ],
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  "dumpAndLoad": {
+                    "description": "A strategy where the backup and restore of a component is\nachieved using application specific tools for dumping and loading data,\nlike `mysqldump` for MySQL or `pg_dump` for PostgreSQL. Dump files are\nstored in a dedicated volume. Only the dedicated volume must be\nselected to be backed up for this strategy. The dump target and load target\ncould be different. This strategy is exclusively applicable to `StatefulSet`\ncomponents that use a defined `volumeClaimTemplate` resource to provision volumes.",
+                    "properties": {
+                      "backupPostHooks": {
+                        "description": "A list of hooks that are executed after a\ndedicated dump volume is backed up. These are usually clean up steps.",
+                        "items": {
+                          "description": "Defines how a hook is executed in a selected container, assuming\nthe target Pod has been selected.",
+                          "properties": {
+                            "command": {
+                              "description": "The command to execute. The hook command to run.\nFor example, `[\"/sbin/fsfreeze\", \"--freeze\"]`.",
+                              "items": {
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            "container": {
+                              "description": "The container that this hook executes on. If unspecified, it executes on\nthe first container of the Pod.",
+                              "type": "string"
+                            },
+                            "name": {
+                              "description": "The name of this hook. This field is used to identify the status of hook execution,\nand any errors that are encountered.",
+                              "type": "string"
+                            },
+                            "onError": {
+                              "description": "The desired behavior to follow when the hook execution runs into an error.\nValid values are `Ignore` or `Fail`. If unspecified, the value will be `Fail`.",
+                              "enum": [
+                                "Ignore",
+                                "Fail"
+                              ],
+                              "type": "string"
+                            },
+                            "timeoutSeconds": {
+                              "description": "The timeout of the hook in seconds. If unspecified,\nthe default value is `30`.",
+                              "format": "int32",
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "command",
+                            "name"
+                          ],
+                          "type": "object",
+                          "additionalProperties": false
+                        },
+                        "type": "array"
+                      },
+                      "dumpHooks": {
+                        "description": "A list of hooks that are used to dump the data of this\ncomponent into a dedicated volume.\nThe execution target Pod is one of the Pods selected from the `DumpTarget` field.",
+                        "items": {
+                          "description": "Defines how a hook is executed in a selected container, assuming\nthe target Pod has been selected.",
+                          "properties": {
+                            "command": {
+                              "description": "The command to execute. The hook command to run.\nFor example, `[\"/sbin/fsfreeze\", \"--freeze\"]`.",
+                              "items": {
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            "container": {
+                              "description": "The container that this hook executes on. If unspecified, it executes on\nthe first container of the Pod.",
+                              "type": "string"
+                            },
+                            "name": {
+                              "description": "The name of this hook. This field is used to identify the status of hook execution,\nand any errors that are encountered.",
+                              "type": "string"
+                            },
+                            "onError": {
+                              "description": "The desired behavior to follow when the hook execution runs into an error.\nValid values are `Ignore` or `Fail`. If unspecified, the value will be `Fail`.",
+                              "enum": [
+                                "Ignore",
+                                "Fail"
+                              ],
+                              "type": "string"
+                            },
+                            "timeoutSeconds": {
+                              "description": "The timeout of the hook in seconds. If unspecified,\nthe default value is `30`.",
+                              "format": "int32",
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "command",
+                            "name"
+                          ],
+                          "type": "object",
+                          "additionalProperties": false
+                        },
+                        "type": "array"
+                      },
+                      "dumpTarget": {
+                        "description": "The name of a preferred `Deployment` or `StatefulSet` resource that\nis used to dump the component data. We select the target Pod based\non how this component is composed.\nFor `Deployment`, pick the only Pod created by the target `Deployment` resource.\nFor single-`StatefulSet`, pick the second Pod created by the target `StatefulSet` resource if\nthe replica number is greater than two. Otherwise, pick the only Pod.\nFor multi-`StatefulSet`, pick the first Pod created by the target `StatefulSet` resource.",
+                        "type": "string"
+                      },
+                      "loadHooks": {
+                        "description": "A list of hooks that are used to load the data of this\ncomponent from a dedicated volume. It might include clean up steps after\nthe load is completed.\nThe execution target Pod is one of the Pods selected from the `LoadTarget` field.",
+                        "items": {
+                          "description": "Defines how a hook is executed in a selected container, assuming\nthe target Pod has been selected.",
+                          "properties": {
+                            "command": {
+                              "description": "The command to execute. The hook command to run.\nFor example, `[\"/sbin/fsfreeze\", \"--freeze\"]`.",
+                              "items": {
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            "container": {
+                              "description": "The container that this hook executes on. If unspecified, it executes on\nthe first container of the Pod.",
+                              "type": "string"
+                            },
+                            "name": {
+                              "description": "The name of this hook. This field is used to identify the status of hook execution,\nand any errors that are encountered.",
+                              "type": "string"
+                            },
+                            "onError": {
+                              "description": "The desired behavior to follow when the hook execution runs into an error.\nValid values are `Ignore` or `Fail`. If unspecified, the value will be `Fail`.",
+                              "enum": [
+                                "Ignore",
+                                "Fail"
+                              ],
+                              "type": "string"
+                            },
+                            "timeoutSeconds": {
+                              "description": "The timeout of the hook in seconds. If unspecified,\nthe default value is `30`.",
+                              "format": "int32",
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "command",
+                            "name"
+                          ],
+                          "type": "object",
+                          "additionalProperties": false
+                        },
+                        "type": "array"
+                      },
+                      "loadTarget": {
+                        "description": "The name of the preferred `Deployment` or `StatefulSet` resource that\nis used to load the component data. We select the target Pod based\non how this component is composed.\nFor `Deployment`, pick the only Pod created by target `Deployment` resource.\nFor `StatefulSet`, always pick the first Pod created by target `StatefulSet` resource.",
+                        "type": "string"
+                      },
+                      "volumeSelector": {
+                        "description": "A label selector that must select dedicated\nvolumes that are used to dump and load the application data. Only one\nvolume must be selected in both the `DumpTarget` and `LoadTarget` fields.",
+                        "properties": {
+                          "matchExpressions": {
+                            "description": "matchExpressions is a list of label selector requirements. The requirements are ANDed.",
+                            "items": {
+                              "description": "A label selector requirement is a selector that contains values, a key, and an operator that\nrelates the key and values.",
+                              "properties": {
+                                "key": {
+                                  "description": "key is the label key that the selector applies to.",
+                                  "type": "string"
+                                },
+                                "operator": {
+                                  "description": "operator represents a key's relationship to a set of values.\nValid operators are In, NotIn, Exists and DoesNotExist.",
+                                  "type": "string"
+                                },
+                                "values": {
+                                  "description": "values is an array of string values. If the operator is In or NotIn,\nthe values array must be non-empty. If the operator is Exists or DoesNotExist,\nthe values array must be empty. This array is replaced during a strategic\nmerge patch.",
+                                  "items": {
+                                    "type": "string"
+                                  },
+                                  "type": "array"
+                                }
+                              },
+                              "required": [
+                                "key",
+                                "operator"
+                              ],
+                              "type": "object",
+                              "additionalProperties": false
+                            },
+                            "type": "array"
+                          },
+                          "matchLabels": {
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "description": "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels\nmap is equivalent to an element of matchExpressions, whose key field is \"key\", the\noperator is \"In\", and the values array contains only \"value\". The requirements are ANDed.",
+                            "type": "object"
+                          }
+                        },
+                        "type": "object",
+                        "x-kubernetes-map-type": "atomic",
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "dumpTarget",
+                      "loadTarget"
+                    ],
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  "type": {
+                    "description": "The type of backup and restore strategy. The value can only be either\n`BackupAllRestoreAll`, `BackupOneRestoreAll`, or `DumpAndLoad`.\nNote, the `Pod` resource kind only supports the `BackupAllRestoreAll` strategy.\nThis is the union discriminator.",
+                    "enum": [
+                      "BackupAllRestoreAll",
+                      "BackupOneRestoreAll",
+                      "DumpAndLoad"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "name",
+              "resourceKind",
+              "resourceNames",
+              "strategy"
+            ],
+            "type": "object",
+            "additionalProperties": false
+          },
+          "type": "array"
+        },
+        "resourceSelection": {
+          "description": "The resources that belong to this `ProtectedApplication`.",
+          "properties": {
+            "applicationName": {
+              "description": "The name of a sig-apps application within the same namespace.\nThis is the application the data protection specification applies to.",
+              "type": "string"
+            },
+            "selector": {
+              "description": "The resources in the same namespace as the `ProtectedApplication` resource\nthat are selected. The data protection specification is applied to these resources.",
+              "properties": {
+                "matchExpressions": {
+                  "description": "matchExpressions is a list of label selector requirements. The requirements are ANDed.",
+                  "items": {
+                    "description": "A label selector requirement is a selector that contains values, a key, and an operator that\nrelates the key and values.",
+                    "properties": {
+                      "key": {
+                        "description": "key is the label key that the selector applies to.",
+                        "type": "string"
+                      },
+                      "operator": {
+                        "description": "operator represents a key's relationship to a set of values.\nValid operators are In, NotIn, Exists and DoesNotExist.",
+                        "type": "string"
+                      },
+                      "values": {
+                        "description": "values is an array of string values. If the operator is In or NotIn,\nthe values array must be non-empty. If the operator is Exists or DoesNotExist,\nthe values array must be empty. This array is replaced during a strategic\nmerge patch.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      }
+                    },
+                    "required": [
+                      "key",
+                      "operator"
+                    ],
+                    "type": "object",
+                    "additionalProperties": false
+                  },
+                  "type": "array"
+                },
+                "matchLabels": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels\nmap is equivalent to an element of matchExpressions, whose key field is \"key\", the\noperator is \"In\", and the values array contains only \"value\". The requirements are ANDed.",
+                  "type": "object"
+                }
+              },
+              "type": "object",
+              "x-kubernetes-map-type": "atomic",
+              "additionalProperties": false
+            },
+            "type": {
+              "description": "The type of application source. The `Type` field must be `ApplicationName` or `Selector`.\nThis is the union discriminator.",
+              "enum": [
+                "ApplicationName",
+                "Selector"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "resourceSelection"
+      ],
+      "type": "object",
+      "additionalProperties": false
+    },
+    "status": {
+      "description": "Defines the status of this `ProtectedApplication` resource.",
+      "properties": {
+        "error": {
+          "description": "The errors relating to this protected application. For example,\none component configuration is invalid.",
+          "items": {
+            "description": "Contains detailed error information for this\n`ProtectedApplication` resource.",
+            "properties": {
+              "message": {
+                "description": "A human-readable message indicating details about the error.",
+                "type": "string"
+              },
+              "reason": {
+                "description": "A camel case string that describes any error and is used\nfor machine parsing and tidy display.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "message",
+              "reason"
+            ],
+            "type": "object",
+            "additionalProperties": false
+          },
+          "type": "array"
+        },
+        "readyToBackup": {
+          "description": "Specifies whether this `ProtectedApplication` resource is ready to\nbackup. A `ProtectedApplication` resource is not ready if it contains any errors.",
+          "type": "boolean"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false
+    }
+  },
+  "type": "object"
+}

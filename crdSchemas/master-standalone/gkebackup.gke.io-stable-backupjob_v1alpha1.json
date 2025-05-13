@@ -1,0 +1,125 @@
+{
+  "description": "BackupJob is the Schema for the backupjobs API",
+  "properties": {
+    "apiVersion": {
+      "description": "APIVersion defines the versioned schema of this representation of an object.\nServers should convert recognized schemas to the latest internal value, and\nmay reject unrecognized values.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+      "type": "string"
+    },
+    "kind": {
+      "description": "Kind is a string value representing the REST resource this object represents.\nServers may infer this from the endpoint the client submits requests to.\nCannot be updated.\nIn CamelCase.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "spec": {
+      "description": "BackupJobSpec defines the desired state of BackupJob.",
+      "properties": {
+        "gcpBackupName": {
+          "description": "GCPBackupName is the fully qualified GCP Backup name that the BackupJob is executing against.\nThe name is immutable and follows the pattern below:\nprojects/{project_id}/locations/{location_id}/backupPlans/{backupPlanId}/backups/{backupId}",
+          "type": "string"
+        },
+        "options": {
+          "description": "Options specifies how to take this backup. It has options to IncludeSecret,\nIncludeVolumes and set custom mapping between StorageClass and VolumeBackupClass.\nIf unspecified, if will fall back to default value for each options.",
+          "properties": {
+            "includeSecrets": {
+              "description": "IncludeSecrets indicate whether the backup should backup ALL secrets.\nDefault is set to true, which will backup secrets across all the namespaces\nin the entire cluster, to make sure the backup is recoverable.",
+              "type": "boolean"
+            },
+            "includeVolumes": {
+              "description": "IncludeVolumes indicate whether to backup volumes. If this is set to true,\nyou will need to specify the StorageClassToBackupClassMapping for volume to back up correctly.\nIf unspecified, the default value will be set to false.",
+              "type": "boolean"
+            }
+          },
+          "type": "object",
+          "additionalProperties": false
+        },
+        "source": {
+          "description": "Source defines the resources that needs to be backed up. Required.\nThere are 4 different backup options: Cluster, Namespaces, Applications and\nApplicationGroups. Exactly *one* should be specified at any time.\n\n- Cluster: It will back up everything in the cluster.\n\n- Namespaces: List of namespaces name in string. It will backup all the\n  content in these namespaces.\n\n- Applications: List of ProtectedApplication to backup. They have to be\n  NamespacedName that refers to the application. These applications\n  can be in different namespaces.",
+          "properties": {
+            "applications": {
+              "description": "Applications is the list of ProtectedApplication to backup.\nOnly name and namespace is required.",
+              "items": {
+                "description": "NamespacedName contains the namespace and the name of the resource.",
+                "properties": {
+                  "name": {
+                    "description": "Name string. Required.",
+                    "type": "string"
+                  },
+                  "namespace": {
+                    "description": "Namespace string. Required.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "namespace"
+                ],
+                "type": "object",
+                "additionalProperties": false
+              },
+              "type": "array"
+            },
+            "cluster": {
+              "description": "Cluster will backup entire cluster.",
+              "type": "boolean"
+            },
+            "namespaces": {
+              "description": "Namespaces is the list of namespaces to backup.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": {
+              "description": "Type of backup source. Type can only be Cluster, Namespaces or Applications.\nThis is the union discriminator.",
+              "enum": [
+                "Cluster",
+                "Namespaces",
+                "Applications"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "gcpBackupName",
+        "source"
+      ],
+      "type": "object",
+      "additionalProperties": false
+    },
+    "status": {
+      "description": "BackupJobStatus defines the observed state of BackupJob.",
+      "properties": {
+        "message": {
+          "description": "A human-readable message indicating details about why backup is in this state.",
+          "type": "string"
+        },
+        "phase": {
+          "description": "Phase is the current phase of backup.",
+          "enum": [
+            "New",
+            "InProgress",
+            "Succeeded",
+            "Failed"
+          ],
+          "type": "string"
+        },
+        "reason": {
+          "description": "Reason is a brief CamelCase string that describes any update and is meant\nfor machine parsing and tidy display.",
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false
+    }
+  },
+  "type": "object"
+}
