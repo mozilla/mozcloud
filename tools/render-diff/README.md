@@ -9,7 +9,7 @@ render-diff is intended to render helm charts stored in our infrastructure git r
 
 # Installation
 
-`go install github.com/mozcloud/tools/render-diff@latest`
+`go install github.com/mozilla/mozcloud/tools/render-diff@latest`
 
 # Flags
 

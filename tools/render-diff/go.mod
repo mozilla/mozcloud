@@ -1,4 +1,4 @@
-module github.com/mozcloud/tools/render-diff
+module github.com/mozilla/mozcloud/tools/render-diff
 
 go 1.25.3
 
