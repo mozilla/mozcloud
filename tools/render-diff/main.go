@@ -102,14 +102,12 @@ func main() {
 	}
 
 	// Render Local (Feature Branch) Chart
-	log.Println("Rendering chart from local branch...")
 	localRender, err := renderChart(localChartPath, "release", localValuesPaths)
 	if err != nil {
 		log.Fatalf("Failed to render local chart: %v", err)
 	}
 
 	// Set up Git Worktree for Target Ref
-	log.Printf("Creating temporary worktree for '%s' ref...", *gitRefFlag)
 	tempDir, err := os.MkdirTemp("", "diff-ref-")
 	if err != nil {
 		log.Fatalf("Failed to create temp directory: %v", err)
@@ -124,7 +122,6 @@ func main() {
 	}()
 
 	defer func() {
-		log.Printf("Cleaning up worktree at %s...", tempDir)
 		// Using --force to avoid errors if dir is already partially cleaned
 		cleanupCmd := exec.Command("git", "worktree", "remove", "--force", tempDir)
 		cleanupCmd.Dir = repoRoot // Run from the repo root
@@ -141,7 +138,6 @@ func main() {
 	if output, err := addCmd.CombinedOutput(); err != nil {
 		log.Fatalf("Failed to create worktree for '%s': %v\nOutput: %s", *gitRefFlag, err, string(output))
 	}
-	log.Printf("Worktree for '%s' created at: %s", *gitRefFlag, tempDir)
 
 	// Render Target Ref Chart
 	targetChartPath := filepath.Join(tempDir, relativeChartPath)
@@ -152,14 +148,12 @@ func main() {
 		targetValuesPaths[i] = filepath.Join(targetChartPath, v)
 	}
 
-	log.Printf("Rendering chart from '%s' ref...", *gitRefFlag)
 	targetRender, err := renderChart(targetChartPath, "release", targetValuesPaths)
 	if err != nil {
 		log.Fatalf("Failed to render '%s' ref chart: %v", *gitRefFlag, err)
 	}
 
 	// Generate and Print Diff
-	log.Println("Generating diff...")
 	diff := createDiff(targetRender, localRender, fmt.Sprintf("%s/%s", *gitRefFlag, relativeChartPath), fmt.Sprintf("local/%s", relativeChartPath))
 
 	if diff == "" {
@@ -204,7 +198,6 @@ func renderChart(chartPath, releaseName string, valuesFiles []string) (string, e
 	// Helm Dependency Build
 	// Run 'helm dependency build' if dependencies are present
 	if chart.Metadata.Dependencies != nil {
-		log.Printf("Chart has dependencies, running 'helm dependency build' for: %s", chartPath)
 
 		// We need a basic cli.EnvSettings to init the getter.Providers.
 		settings := cli.New()
@@ -224,7 +217,6 @@ func renderChart(chartPath, releaseName string, valuesFiles []string) (string, e
 
 		// Reload the chart after building dependencies
 		// This ensures the newly downloaded subcharts are included in the render.
-		log.Printf("Reloading chart to include dependencies...")
 		chart, err = loader.Load(chartPath)
 		if err != nil {
 			return "", fmt.Errorf("failed to reload chart after dependency build: %w", err)
