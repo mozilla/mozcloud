@@ -1,0 +1,189 @@
+{
+  "description": "AccessRequest is the Schema for the accessrequests API",
+  "properties": {
+    "apiVersion": {
+      "description": "APIVersion defines the versioned schema of this representation of an object.\nServers should convert recognized schemas to the latest internal value, and\nmay reject unrecognized values.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+      "type": "string"
+    },
+    "kind": {
+      "description": "Kind is a string value representing the REST resource this object represents.\nServers may infer this from the endpoint the client submits requests to.\nCannot be updated.\nIn CamelCase.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "spec": {
+      "description": "AccessRequestSpec defines the desired state of AccessRequest",
+      "properties": {
+        "application": {
+          "description": "Application defines the Argo CD Application to assign the elevated\npermission",
+          "properties": {
+            "name": {
+              "description": "Name refers to the Argo CD Application name",
+              "type": "string"
+            },
+            "namespace": {
+              "description": "Namespace refers to the namespace where the Argo CD Application lives",
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "namespace"
+          ],
+          "type": "object",
+          "x-kubernetes-validations": [
+            {
+              "message": "Value is immutable",
+              "rule": "self == oldSelf"
+            }
+          ],
+          "additionalProperties": false
+        },
+        "duration": {
+          "description": "Duration defines the ammount of time that the elevated access\nwill be granted once approved",
+          "type": "string"
+        },
+        "role": {
+          "description": "TargetRoleName defines the role name the user will be assigned\nto once the access is approved",
+          "properties": {
+            "friendlyName": {
+              "description": "FriendlyName defines a name for this role",
+              "maxLength": 512,
+              "type": "string"
+            },
+            "ordinal": {
+              "description": "Ordinal defines an ordering number of this role compared to others",
+              "type": "integer"
+            },
+            "templateRef": {
+              "description": "TemplateName defines the role template the user will be assigned",
+              "properties": {
+                "name": {
+                  "description": "Name refers to the RoleTemplate name",
+                  "maxLength": 512,
+                  "type": "string"
+                },
+                "namespace": {
+                  "description": "Namespace refers to the namespace where the RoleTemplate lives",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "namespace"
+              ],
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "templateRef"
+          ],
+          "type": "object",
+          "x-kubernetes-validations": [
+            {
+              "message": "Value is immutable",
+              "rule": "self == oldSelf"
+            }
+          ],
+          "additionalProperties": false
+        },
+        "subject": {
+          "description": "Subject defines the subject for this access request",
+          "properties": {
+            "username": {
+              "description": "Username refers to the entity requesting the elevated permission",
+              "type": "string"
+            }
+          },
+          "required": [
+            "username"
+          ],
+          "type": "object",
+          "x-kubernetes-validations": [
+            {
+              "message": "Value is immutable",
+              "rule": "self == oldSelf"
+            }
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "application",
+        "duration",
+        "role",
+        "subject"
+      ],
+      "type": "object",
+      "additionalProperties": false
+    },
+    "status": {
+      "description": "AccessRequestStatus defines the observed state of AccessRequest",
+      "properties": {
+        "expiresAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "history": {
+          "items": {
+            "description": "AccessRequestHistory contain the history of all status transitions associated\nwith this access request",
+            "properties": {
+              "details": {
+                "description": "Details may contain detailed information about the transition",
+                "type": "string"
+              },
+              "status": {
+                "description": "RequestState is the new status assigned to this access request",
+                "enum": [
+                  "requested",
+                  "granted",
+                  "expired",
+                  "denied",
+                  "invalid"
+                ],
+                "type": "string"
+              },
+              "transitionTime": {
+                "description": "TransitionTime is the time the transition is observed",
+                "format": "date-time",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "transitionTime"
+            ],
+            "type": "object",
+            "additionalProperties": false
+          },
+          "type": "array"
+        },
+        "requestState": {
+          "description": "Status defines the different stages a given access request can be\nat a given time.",
+          "enum": [
+            "requested",
+            "granted",
+            "expired",
+            "denied",
+            "invalid"
+          ],
+          "type": "string"
+        },
+        "roleName": {
+          "type": "string"
+        },
+        "roleTemplateHash": {
+          "type": "string"
+        },
+        "targetProject": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false
+    }
+  },
+  "type": "object"
+}
