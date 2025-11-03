@@ -11,6 +11,7 @@ SHELL := /usr/bin/env bash
 .SHELLFLAGS := -eu -o pipefail -c
 
 CRDS_CATALOG_REPO ?= https://github.com/datreeio/CRDs-catalog.git
+CRDS_CATALOG_REF  ?= 808cecce07adf438cde06b413250be548981321c # Pinning to a specific commit
 CRDS_CATALOG_DIR  ?= .cache/CRDs-catalog
 
 MOZCLOUD_DIR ?= ../mozcloud
@@ -37,16 +38,19 @@ help:
 clone:
 	@if [ ! -d "$(CRDS_CATALOG_DIR)/.git" ]; then \
 		echo "Cloning $(CRDS_CATALOG_REPO) into $(CRDS_CATALOG_DIR)"; \
-		$(GIT) clone --depth 1 "$(CRDS_CATALOG_REPO)" "$(CRDS_CATALOG_DIR)"; \
-	else \
-		$(MAKE) update; \
+		$(GIT) clone "$(CRDS_CATALOG_REPO)" "$(CRDS_CATALOG_DIR)"; \
 	fi
+	@cd "$(CRDS_CATALOG_DIR)"; \
+		echo "Checking out pinned ref $(CRDS_CATALOG_REF)"; \
+		$(GIT) fetch --depth 1 origin $(CRDS_CATALOG_REF); \
+		$(GIT) checkout -q $(CRDS_CATALOG_REF)
 
 update:
-	@echo "Fetching latest CRDs-catalog"
+	@echo "Resetting CRDs-catalog to pinned ref $(CRDS_CATALOG_REF)"
 	@cd "$(CRDS_CATALOG_DIR)"; \
-		$(GIT) fetch --prune; \
-		$(GIT) reset --hard origin/main
+		$(GIT) fetch --depth 1 origin $(CRDS_CATALOG_REF); \
+		$(GIT) checkout -q $(CRDS_CATALOG_REF); \
+		$(GIT) reset --hard $(CRDS_CATALOG_REF)
 
 extract: clone
 	@echo "Running CRD extractor with current kubectl context: $$($(KUBECTL) config current-context)"
@@ -54,7 +58,7 @@ extract: clone
 		echo "Extractor not found at: $(CRDS_CATALOG_DIR)/Utilities/crd-extractor.sh"; \
 		echo "Contents of $(CRDS_CATALOG_DIR):"; ls -la "$(CRDS_CATALOG_DIR)"; \
 		echo "Contents of $(CRDS_CATALOG_DIR)/Utilities (if present):"; ls -la "$(CRDS_CATALOG_DIR)/Utilities" || true; \
-		exit 1;
+		exit 1; \
 	}
 	@chmod +x "$(CRDS_CATALOG_DIR)/Utilities/crd-extractor.sh"
 	@mkdir -p "$(TARGET_DIR)"
