@@ -11,7 +11,7 @@ all: build
 # Build render-diff
 .PHONY: build
 build:
-	go build -o render-diff
+	go build -o $(LOCALBIN)/render-diff
 
 # Run golangci-lint
 .PHONY: lint
