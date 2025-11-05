@@ -168,7 +168,7 @@ func Execute() {
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&renderPathFlag, "path", "p", ".", "Relative path to the chart or kustomization directory")
 	rootCmd.PersistentFlags().StringVarP(&gitRefFlag, "ref", "r", "main", "Target Git ref to compare against with optional remote. Remote will default to 'origin' if not specified (origin/main)")
-	rootCmd.PersistentFlags().StringSliceVarP(&valuesFlag, "values", "v", []string{}, "Path to an additional values file (can be specified multiple times)")
+	rootCmd.PersistentFlags().StringSliceVarP(&valuesFlag, "values", "f", []string{}, "Path to an additional values file (can be specified multiple times)")
 	rootCmd.PersistentFlags().BoolVarP(&debugFlag, "debug", "d", false, "Enable verbose logging for debugging")
 
 	rootCmd.Flags().SortFlags = false
