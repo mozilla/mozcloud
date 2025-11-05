@@ -1,27 +1,40 @@
 # Render-Diff
-render-diff is intended to render helm charts stored in our infrastructure git repositories and compare the current revision vs a target revision (defaults to main)
+`render-diff` provides a fast and local preview of your rendered Kubernetes manifest changes.
 
-# Setup
-### Requirements
+It renders your local Helm chart or Kustomize overlay to compare the resulting manifests against the version in a target git ref (like 'main' or 'develop').
+It prints a colored diff of the final rendered YAML.
+
+## Requirements
 * `make`
 * `git`
-* Go `1.25` or newer
+* Go `1.24` or newer
 
-# Installation
+## Installation
 
-`go install github.com/mozilla/mozcloud/tools/render-diff@latest`
+You can install `render-diff` directly using `go install`:
+
+```sh
+go install github.com/mozilla/mozcloud/tools/render-diff@latest
+```
 
 # Flags
 
-* `-chart-path` - Relative path to the chart (required).
-* `-ref` - Target Git ref to compare against (e.g., 'test', 'develop') (default "main").
-* `-values` - Path to an additional values file, relative to the chart-path (can be specified multiple times). The chart's `values.yaml` is always included first.
+| Flag | Shorthand | Description | Default |
+| :--- | :--- | :--- | :--- |
+| `--path` | `-p` | **(Required)** Relative path to the chart or kustomization directory. | `.` |
+| `--ref` | `-r` | Target Git ref to compare against. | `main` |
+| `--values` | `-v` | Path to an additional values file (can be specified multiple times). | `[]` |
+| `--debug` | `-d` | Enable verbose logging for debugging | `false` |
+| `--version` | | Prints the application version. | |
+| `--help` | `-h` | Show help information. | |
 
 # Examples
 
-### This should be run while your current directory is within your git repository
+### This must be run while your current directory is within your git repository
 
-#### Checking diff against another target ref
-* ```render-diff -chart-path=./cicd-demos/k8s/cicd-demos -values=values-dev.yaml --ref notifications-testing-2```
-#### Checking diff against the main branch
-* ```render-diff -chart-path=./cicd-demos/k8s/cicd-demos -values=values-dev.yaml```
+#### Checking a Helm Chart diff against another target ref
+* ```render-diff -path ./examples/helm/helloWorld -values values-dev.yaml --ref development```
+#### Checking Kustomize diff against the default (`main`) branch
+* ```render-diff -path ./examples/kustomize/helloWorld```
+#### Checking Kustomize diff against a tag
+* ```render-diff -p ./examples/kustomize/helloWorld -r tags/v0.5.1```
