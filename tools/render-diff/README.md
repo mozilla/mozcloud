@@ -30,11 +30,12 @@ go install github.com/mozilla/mozcloud/tools/render-diff@latest
 
 # Examples
 
-### This must be run while your current directory is within your git repository
+### This must be run while your current directory is within your git repository. For helm charts you do not need to include `values.yaml`. It is included by default.
+
 
 #### Checking a Helm Chart diff against another target ref
-* ```render-diff -path ./examples/helm/helloWorld -values values-dev.yaml --ref development```
+* ```render-diff --path ./examples/helm/helloWorld --values values-dev.yaml --ref development```
 #### Checking Kustomize diff against the default (`main`) branch
-* ```render-diff -path ./examples/kustomize/helloWorld```
+* ```render-diff -p ./examples/kustomize/helloWorld```
 #### Checking Kustomize diff against a tag
 * ```render-diff -p ./examples/kustomize/helloWorld -r tags/v0.5.1```
