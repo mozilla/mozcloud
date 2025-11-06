@@ -1,8 +1,7 @@
 # Render-Diff
-`render-diff` provides a fast and local preview of your rendered Kubernetes manifest changes.
+`render-diff` provides a fast and local preview of rendered Kubernetes manifest changes.
 
-It renders your local Helm chart or Kustomize overlay to compare the resulting manifests against the version in a target git ref (like 'main' or 'develop').
-It prints a colored diff of the final rendered YAML.
+It compares your locally rendered Helm chart or Kustomize overlay against the rendered output from a target Git ref (for example, `main` or `develop`), and prints a colored diff of the resulting YAML manifests.
 
 ## Requirements
 * `make`
@@ -17,7 +16,7 @@ You can install `render-diff` directly using `go install`:
 go install github.com/mozilla/mozcloud/tools/render-diff@latest
 ```
 
-# Flags
+## Flags
 
 | Flag | Shorthand | Description | Default |
 | :--- | :--- | :--- | :--- |
@@ -28,9 +27,9 @@ go install github.com/mozilla/mozcloud/tools/render-diff@latest
 | `--version` | | Prints the application version. | |
 | `--help` | `-h` | Show help information. | |
 
-# Examples
+## Examples
 
-### This must be run while your current directory is within your git repository. For helm charts you do not need to include `values.yaml`. It is included by default.
+Run this tool from within your Git repository. For Helm charts, values.yaml is automatically included.
 
 
 #### Checking a Helm Chart diff against another target ref
