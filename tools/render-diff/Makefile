@@ -31,7 +31,7 @@ fmt:
 # Run go tests if they exist
 .PHONY: test
 test:
-	go test ./... -v
+	go test ./...
 
 ##@ Dependencies
 

@@ -3,16 +3,20 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/mozilla/mozcloud/tools/render-diff/internal/diff"
 	"github.com/mozilla/mozcloud/tools/render-diff/internal/git"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 )
 
 // Package vars
@@ -77,19 +81,18 @@ It renders your local Helm chart or Kustomize overlay to compare the resulting m
 	},
 
 	RunE: func(cmd *cobra.Command, args []string) error {
-
-		log.Printf("Starting diff against git ref '%s':\n", fullRef)
+		log.Printf("Starting diff against git ref '%s':", fullRef)
 
 		// Get the absolute path from the path flag
 		absPath, err := filepath.Abs(renderPathFlag)
 		if err != nil {
-			return fmt.Errorf("failed to resolve absolute path for -path %v", err)
+			return fmt.Errorf("failed to resolve absolute path for -path %w", err)
 		}
 
 		// Get the relative path compared to the repoRoot)
 		relativePath, err := filepath.Rel(repoRoot, absPath)
 		if err != nil {
-			return fmt.Errorf("failed to resolve relative path for -path %v", err)
+			return fmt.Errorf("failed to resolve relative path for -path %w", err)
 		}
 
 		if strings.HasPrefix(relativePath, "..") {
@@ -105,17 +108,12 @@ It renders your local Helm chart or Kustomize overlay to compare the resulting m
 			localValuesPaths[i] = filepath.Join(localPath, v)
 		}
 
-		// Render Local (Feature Branch) Chart or Kustomization
-		localRender, err := diff.RenderManifests(localPath, localValuesPaths, debugFlag)
-		if err != nil {
-			return fmt.Errorf("failed to render path in local ref: %v", err)
-		}
-
+		// Setup temporary work tree for diffs
 		tempDir, cleanup, err := git.SetupWorkTree(repoRoot, fullRef)
 		if err != nil {
 			return err
 		}
-		// We want this to run after wwe have generated our diffs
+		// We want this to run after we have generated our diffs
 		defer cleanup()
 
 		targetPath := filepath.Join(tempDir, relativePath)
@@ -126,17 +124,40 @@ It renders your local Helm chart or Kustomize overlay to compare the resulting m
 			targetValuesPaths[i] = filepath.Join(targetPath, v)
 		}
 
-		// Render target Ref Chart or Kustomization
-		targetRender, err := diff.RenderManifests(targetPath, targetValuesPaths, debugFlag)
-		if err != nil {
-			// If the path does not exist in the target ref
-			// We can assume it's a new addition and diff against
-			// an empty string instead.
-			if os.IsNotExist(err) {
-				targetRender = ""
-			} else {
-				return fmt.Errorf("failed to render target ref manifests: %v", err)
+		// Create localRender and targetRender outside of goroutines
+		// Create errgroup for chart/kustomization rendering
+		var localRender, targetRender string
+		g := new(errgroup.Group)
+
+		// Render local Chart or Kustomization
+		g.Go(func() error {
+			localRender, err = diff.RenderManifests(localPath, localValuesPaths, debugFlag)
+			if err != nil {
+				return fmt.Errorf("failed to render path in local ref: %w", err)
 			}
+			return nil
+		})
+
+		// Render target Ref Chart or Kustomization
+		g.Go(func() error {
+			targetRender, err = diff.RenderManifests(targetPath, targetValuesPaths, debugFlag)
+			if err != nil {
+				// If the path does not exist in the target ref
+				// We can assume it's a new addition and diff against
+				// an empty string instead.
+				if os.IsNotExist(err) {
+					targetRender = ""
+				} else {
+					return fmt.Errorf("failed to render target ref manifests: %w", err)
+				}
+			}
+			return nil
+		})
+
+		// Ensure both rendering goroutines have finished before creating our diff
+		err = g.Wait()
+		if err != nil {
+			return err
 		}
 
 		// Generate and Print Diff
@@ -157,7 +178,12 @@ It renders your local Helm chart or Kustomize overlay to compare the resulting m
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	err := rootCmd.Execute()
+	// Create a context that is cancelled on an interrupt signal
+	// We want to ensure the work tree cleanup is run even if interrupted.
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+
+	err := rootCmd.ExecuteContext(ctx)
 	if err != nil {
 		os.Exit(1)
 	}
