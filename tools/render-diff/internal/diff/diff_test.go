@@ -67,7 +67,7 @@ func TestRenderManifests(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			output, err := RenderManifests(tc.path, tc.values, tc.debug)
+			output, err := RenderManifests(tc.path, tc.values, tc.debug, false)
 
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("RenderManifests() error = %v, wantErr %v", err, tc.wantErr)

@@ -1,6 +1,10 @@
-# Default values for helloWorld.
+# Default values for helloworld.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
+
+# Enable chart dependencies
+dep:
+  enabled: true
 
 # This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
 replicaCount: 1

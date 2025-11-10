@@ -1,0 +1,9 @@
+# Default values for helloworld.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# This is for setting up a configmap
+configMap:
+  bar: foo
+  world: hello
+  value: key
