@@ -56,7 +56,6 @@ func RenderChart(chartPath, releaseName string, valuesFiles []string, debug bool
 		// Only used if the -u flag is passed.
 		if update {
 			err = silentRun(debug, func() error {
-				fmt.Println("Updated dependencies")
 				return man.Update()
 			})
 			if err != nil {
