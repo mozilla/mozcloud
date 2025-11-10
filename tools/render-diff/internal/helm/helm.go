@@ -8,8 +8,10 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -20,9 +22,10 @@ import (
 	"helm.sh/helm/v3/pkg/getter"
 )
 
+var logMutex sync.Mutex
+
 // renderChart loads, merges values, and renders a Helm chart
 func RenderChart(chartPath, releaseName string, valuesFiles []string, debug bool, update bool) (string, error) {
-
 	chart, err := loadChart(chartPath, debug)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -36,6 +39,12 @@ func RenderChart(chartPath, releaseName string, valuesFiles []string, debug bool
 	if chart.Metadata.Dependencies != nil {
 		if debug {
 			log.Printf("Chart has dependencies, running 'helm dependency build' for: %s", chartPath)
+		}
+
+		if inflatedSubCharts(chartPath) {
+			logMutex.Lock()
+			log.Printf("Warning: inflated subcharts found in %s/charts.", chartPath)
+			logMutex.Unlock()
 		}
 
 		// We need a basic cli.EnvSettings to init the getter.Providers.
@@ -140,7 +149,9 @@ func loadValues(valuesFiles []string) (chartutil.Values, error) {
 		// Check if file exists. It's not an error if a values file is missing
 		// in one branch but not the other; Helm just skips it.
 		if _, err := os.Stat(path); os.IsNotExist(err) {
+			logMutex.Lock()
 			log.Printf("Warning: values file '%s' not found, skipping.", path)
+			logMutex.Unlock()
 			continue
 		}
 
@@ -183,6 +194,9 @@ func silentRun(debug bool, fn func() error) error {
 		return fn()
 	}
 
+	logMutex.Lock()
+	defer logMutex.Unlock()
+
 	// If debug is off, silence the global logger
 	currentLogger := log.Writer()
 	log.SetOutput(io.Discard)
@@ -191,4 +205,23 @@ func silentRun(debug bool, fn func() error) error {
 	defer log.SetOutput(currentLogger)
 
 	return fn()
+}
+
+// Check if there are directories in the chartPath/charts directory
+// We are are using tar.gz files, but we want to print a warning if there
+// are any uncompressed charts.
+func inflatedSubCharts(chartPath string) bool {
+	subChartsPath := filepath.Join(chartPath, "charts")
+
+	subCharts, err := os.ReadDir(subChartsPath)
+	if err != nil {
+		return false
+	}
+
+	for _, subChart := range subCharts {
+		if subChart.IsDir() {
+			return true
+		}
+	}
+	return false
 }
