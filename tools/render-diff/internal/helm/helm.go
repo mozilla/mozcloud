@@ -21,7 +21,8 @@ import (
 )
 
 // renderChart loads, merges values, and renders a Helm chart
-func RenderChart(chartPath, releaseName string, valuesFiles []string, debug bool) (string, error) {
+func RenderChart(chartPath, releaseName string, valuesFiles []string, debug bool, update bool) (string, error) {
+
 	chart, err := loadChart(chartPath, debug)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -51,14 +52,23 @@ func RenderChart(chartPath, releaseName string, valuesFiles []string, debug bool
 			Debug:     debug,
 		}
 
+		// Run update. This updates the Chart.lock file if dependencies have changed.
+		// Only used if the -u flag is passed.
+		if update {
+			err = silentRun(debug, func() error {
+				fmt.Println("Updated dependencies")
+				return man.Update()
+			})
+			if err != nil {
+				return "", fmt.Errorf("failed to run dependency update: %w", err)
+			}
+		}
+
 		// Run build. This downloads charts into the 'charts/' directory.
 		// We are ignoring some log output here, which can be reverted with the --debug flag
 		err = silentRun(debug, func() error {
 			return man.Build()
 		})
-		if err != nil {
-			return "", fmt.Errorf("failed to run dependency build: %w", err)
-		}
 		if err != nil {
 			return "", fmt.Errorf("failed to run dependency build: %w", err)
 		}

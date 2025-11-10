@@ -33,12 +33,12 @@ func GetRepoRoot() (string, error) {
 
 // RenderManifests will render a Helm Chart or build a Kustomization
 // and return the rendered manifests as a string
-func RenderManifests(path string, values []string, debug bool) (string, error) {
+func RenderManifests(path string, values []string, debug bool, update bool) (string, error) {
 	var renderedManifests string
 	var err error
 
 	if helm.IsHelmChart(path) {
-		renderedManifests, err = helm.RenderChart(path, "release", values, debug)
+		renderedManifests, err = helm.RenderChart(path, "release", values, debug, update)
 		if err != nil {
 			return "", fmt.Errorf("failed to render target Chart: '%s'", err)
 		}
