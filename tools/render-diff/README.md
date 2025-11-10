@@ -23,6 +23,7 @@ go install github.com/mozilla/mozcloud/tools/render-diff@latest
 | `--path` | `-p` | **(Required)** Relative path to the chart or kustomization directory. | `.` |
 | `--ref` | `-r` | Target Git ref to compare against. | `main` |
 | `--values` | `-f` | "Path to an additional values file (can be specified multiple times). The chart's default values.yaml is always loaded first" | `[]` |
+| `--update` | `-u` | Update helm chart dependencies. Required if lockfile does not match dependencies | `false` |
 | `--debug` | `-d` | Enable verbose logging for debugging | `false` |
 | `--version` | | Prints the application version. | |
 | `--help` | `-h` | Show help information. | |
