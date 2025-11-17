@@ -50,7 +50,7 @@ It renders your local Helm chart or Kustomize overlay to compare the resulting m
 		}
 
 		// Get Git repository root
-		repoRoot, err = diff.GetRepoRoot()
+		repoRoot, err = git.GetRepoRoot()
 		if err != nil {
 			return err
 		}

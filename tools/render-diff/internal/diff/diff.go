@@ -3,7 +3,6 @@ package diff
 
 import (
 	"fmt"
-	"os/exec"
 	"strings"
 
 	"github.com/hexops/gotextdiff"
@@ -20,16 +19,6 @@ const (
 	colorCyan  = "\033[36m"
 	colorReset = "\033[0m"
 )
-
-// GetRepoRoot finds the top-level directory of the current git repository.
-func GetRepoRoot() (string, error) {
-	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("failed to find git repo root: %w. Make sure you are running this inside a git repository. Output: %s", err, string(output))
-	}
-	return strings.TrimSpace(string(output)), nil
-}
 
 // RenderManifests will render a Helm Chart or build a Kustomization
 // and return the rendered manifests as a string

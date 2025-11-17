@@ -3,12 +3,10 @@ package git
 import (
 	"os"
 	"testing"
-
-	"github.com/mozilla/mozcloud/tools/render-diff/internal/diff"
 )
 
 func TestSetupWorkTree(t *testing.T) {
-	repoRoot, _ := diff.GetRepoRoot()
+	repoRoot, _ := GetRepoRoot()
 
 	t.Run("Success with valid ref", func(t *testing.T) {
 		gitRef := "HEAD"
