@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/mozilla/mozcloud/tools/render-diff/internal/git"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -37,8 +38,13 @@ func RenderChart(chartPath, releaseName string, valuesFiles []string, debug bool
 	// Helm Dependency Build
 	// Run 'helm dependency build' if dependencies are present
 	if chart.Metadata.Dependencies != nil {
-		if debug {
-			log.Printf("Chart has dependencies, running 'helm dependency build' for: %s", chartPath)
+
+		// We will silently load dependencies for the target ref chart as well, but want
+		// to log loading chart dependencies for the local ref
+		if !strings.Contains(chartPath, git.WorktreePrefix) {
+			logMutex.Lock()
+			log.Printf("Chart dependencies found. Loading dependencies from %s/Chart.lock", chartPath)
+			logMutex.Unlock()
 		}
 
 		if inflatedSubCharts(chartPath) {
