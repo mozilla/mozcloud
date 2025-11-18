@@ -29,15 +29,27 @@ const (
 
 // RenderManifests will render a Helm Chart or build a Kustomization
 // and return the rendered manifests as a string
-func RenderManifests(path string, values []string, debug bool, update bool) (string, error) {
+func RenderManifests(path string, values []string, debug bool, update bool, release string) (string, error) {
 	var renderedManifests string
 	var err error
+	releaseName := release
 
 	if helm.IsHelmChart(path) {
-		renderedManifests, err = helm.RenderChart(path, "gha", values, debug, update)
+		// Set releaseName equal to chartName if --release-name is not supplied
+		if releaseName == "" {
+			chartName, err := helm.GetChartName(path, debug)
+			if err != nil {
+				releaseName = "release"
+			} else {
+				releaseName = chartName
+			}
+		}
+
+		renderedManifests, err = helm.RenderChart(path, releaseName, values, debug, update)
 		if err != nil {
 			return "", fmt.Errorf("failed to render target Chart: '%s'", err)
 		}
+
 		return renderedManifests, nil
 	} else if kustomize.IsKustomize(path) {
 		renderedManifests, err = kustomize.RenderKustomization(path)
