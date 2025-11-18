@@ -1,18 +1,25 @@
 // Package diff provides functions for comparing rendered manifests
+// It includes our simple CreateDiff functions as well as a semantic diff
+// using the homeport/dyff module for more advanced diff features
 package diff
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/hexops/gotextdiff"
 	"github.com/hexops/gotextdiff/myers"
 	"github.com/hexops/gotextdiff/span"
+	"github.com/homeport/dyff/pkg/dyff"
 	"github.com/mozilla/mozcloud/tools/render-diff/internal/helm"
 	"github.com/mozilla/mozcloud/tools/render-diff/internal/kustomize"
+
+	"github.com/gonvenience/ytbx"
+	"gopkg.in/yaml.v3"
 )
 
-// ANSI codes for diff colors
+// ANSI codes for simple diff colors
 const (
 	colorRed   = "\033[31m"
 	colorGreen = "\033[32m"
@@ -27,7 +34,7 @@ func RenderManifests(path string, values []string, debug bool, update bool) (str
 	var err error
 
 	if helm.IsHelmChart(path) {
-		renderedManifests, err = helm.RenderChart(path, "release", values, debug, update)
+		renderedManifests, err = helm.RenderChart(path, "gha", values, debug, update)
 		if err != nil {
 			return "", fmt.Errorf("failed to render target Chart: '%s'", err)
 		}
@@ -43,6 +50,7 @@ func RenderManifests(path string, values []string, debug bool, update bool) (str
 	return "", fmt.Errorf("path: %s is not a valid Helm Chart or Kustomization", path)
 }
 
+// This is the original simple diff configuration
 // createDiff generates a unified diff string between two text inputs.
 func CreateDiff(a, b string, fromName, toName string) string {
 	edits := myers.ComputeEdits(span.URI(fromName), a, b)
@@ -77,4 +85,62 @@ func ColorizeDiff(diff string) string {
 	}
 
 	return coloredDiff.String()
+}
+
+// This is more complex but k8s object aware diff engine
+// it is better suited for larger scale changes to a k8s resources
+func CreateSemanticDiff(targetRender, localRender, fromName, toName string) (*dyff.HumanReport, error) {
+
+	localRenderFile, err := createInputFileFromString(localRender, toName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse local render for semantic diff: %w", err)
+	}
+
+	targetRenderFile, err := createInputFileFromString(targetRender, fromName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse target render for semantic diff: %w", err)
+	}
+
+	options := []dyff.CompareOption{
+		dyff.IgnoreOrderChanges(true),
+		dyff.KubernetesEntityDetection(true),
+		dyff.DetectRenames(true),
+		dyff.IgnoreWhitespaceChanges(true),
+	}
+
+	diff, err := dyff.CompareInputFiles(targetRenderFile, localRenderFile, options...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compare manifests: %w", err)
+	}
+
+	// Create our human readable report from our diffs
+	report := dyff.HumanReport{
+		Report:          diff,
+		OmitHeader:      true,
+		UseGoPatchPaths: true,
+	}
+
+	return &report, nil
+}
+
+// createInputFileFromString parses a multi-document YAML string into a dyff compatible InputFile format
+func createInputFileFromString(content string, location string) (ytbx.InputFile, error) {
+	var docs []*yaml.Node
+	decoder := yaml.NewDecoder(strings.NewReader(content))
+
+	for {
+		var node yaml.Node
+		if err := decoder.Decode(&node); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return ytbx.InputFile{}, fmt.Errorf("failed to decode YAML from %s: %w", location, err)
+		}
+		docs = append(docs, &node)
+	}
+
+	return ytbx.InputFile{
+		Location:  location,
+		Documents: docs,
+	}, nil
 }
