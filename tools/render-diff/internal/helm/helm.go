@@ -231,3 +231,13 @@ func inflatedSubCharts(chartPath string) bool {
 	}
 	return false
 }
+
+// GetChartName attempts to read the Chart.yaml at the provided path and return
+// the name of the chart.
+func GetChartName(chartPath string, debug bool) (string, error) {
+	chart, err := loadChart(chartPath, debug)
+	if err != nil {
+		return "", err
+	}
+	return chart.Metadata.Name, nil
+}

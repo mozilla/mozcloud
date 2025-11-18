@@ -22,11 +22,13 @@ import (
 // Package vars
 // Includes flag vars and some set during PreRun
 var (
-	valuesFlag     []string
-	renderPathFlag string
-	gitRefFlag     string
-	updateFlag     bool
-	debugFlag      bool
+	valuesFlag       []string
+	releaseNameFlag  string
+	renderPathFlag   string
+	gitRefFlag       string
+	updateFlag       bool
+	debugFlag        bool
+	semanticDiffFlag bool
 
 	repoRoot string
 	fullRef  string
@@ -134,7 +136,7 @@ It renders your local Helm chart or Kustomize overlay to compare the resulting m
 
 		// Render local Chart or Kustomization
 		g.Go(func() error {
-			localRender, err = diff.RenderManifests(localPath, localValuesPaths, debugFlag, updateFlag)
+			localRender, err = diff.RenderManifests(localPath, localValuesPaths, debugFlag, updateFlag, releaseNameFlag)
 			if err != nil {
 				return fmt.Errorf("failed to render path in local ref: %w", err)
 			}
@@ -143,7 +145,7 @@ It renders your local Helm chart or Kustomize overlay to compare the resulting m
 
 		// Render target Ref Chart or Kustomization
 		g.Go(func() error {
-			targetRender, err = diff.RenderManifests(targetPath, targetValuesPaths, debugFlag, updateFlag)
+			targetRender, err = diff.RenderManifests(targetPath, targetValuesPaths, debugFlag, updateFlag, releaseNameFlag)
 			if err != nil {
 				// If the path does not exist in the target ref
 				// We can assume it's a new addition and diff against
@@ -163,17 +165,36 @@ It renders your local Helm chart or Kustomize overlay to compare the resulting m
 			return err
 		}
 
-		// Generate and Print Diff
-		renderedDiff := diff.CreateDiff(targetRender, localRender, fmt.Sprintf("%s/%s", fullRef, relativePath), fmt.Sprintf("local/%s", relativePath))
+		if semanticDiffFlag {
+			// We are using a more complex diff engine (dyff) which is better suited for k8s manifest comparison
+			renderedDiff, err := diff.CreateSemanticDiff(targetRender, localRender, fmt.Sprintf("%s/%s", fullRef, relativePath), fmt.Sprintf("local/%s", relativePath))
+			if err != nil {
+				return fmt.Errorf("error creating dyff: %w", err)
+			}
 
-		if renderedDiff == "" {
-			fmt.Println("\nNo differences found between rendered manifests.")
+			if len(renderedDiff.Diffs) == 0 {
+				fmt.Println("\nNo differences found between rendered manifests.")
+				return nil
+			} else {
+				fmt.Printf("\n--- Diff (%s vs. local) ---", fullRef)
+				err := renderedDiff.WriteReport(os.Stdout)
+				if err != nil {
+					return err
+				}
+			}
 		} else {
-			fmt.Printf("\n--- Diff (%s vs. local) ---\n", fullRef)
-			fmt.Println(diff.ColorizeDiff(renderedDiff))
-		}
+			// Generate and Print our simple diff
+			// This is better suited for github comments, or small changes
+			renderedDiff := diff.CreateDiff(targetRender, localRender, fmt.Sprintf("%s/%s", fullRef, relativePath), fmt.Sprintf("local/%s", relativePath))
 
-		// We should not have any errors to return at this point
+			if renderedDiff == "" {
+				fmt.Println("\nNo differences found between rendered manifests.")
+			} else {
+				fmt.Printf("\n--- Diff (%s vs. local) ---\n", fullRef)
+				fmt.Println(diff.ColorizeDiff(renderedDiff))
+
+			}
+		}
 		return nil
 	},
 }
@@ -197,7 +218,9 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&renderPathFlag, "path", "p", ".", "Relative path to the chart or kustomization directory")
 	rootCmd.PersistentFlags().StringVarP(&gitRefFlag, "ref", "r", "main", "Target Git ref to compare against. Will try to find its remote-tracking branch (e.g., origin/main)")
 	rootCmd.PersistentFlags().StringSliceVarP(&valuesFlag, "values", "f", []string{}, "Path to an additional values file (can be specified multiple times)")
+	rootCmd.PersistentFlags().StringVarP(&releaseNameFlag, "release-name", "", "", "Helm release name to use when rendering templates. Defaults to chart name")
 	rootCmd.PersistentFlags().BoolVarP(&updateFlag, "update", "u", false, "Update helm chart dependencies. Required if lockfile does not match dependencies")
+	rootCmd.PersistentFlags().BoolVarP(&semanticDiffFlag, "semantic", "s", false, "Enable semantic diffing of k8s manifests (using dyff)")
 	rootCmd.PersistentFlags().BoolVarP(&debugFlag, "debug", "d", false, "Enable verbose logging for debugging")
 
 	rootCmd.Flags().SortFlags = false

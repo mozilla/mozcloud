@@ -3,6 +3,8 @@
 
 It compares your locally rendered Helm chart or Kustomize overlay against the rendered output from a target Git ref (for example, `main` or `develop`), and prints a colored diff of the resulting YAML manifests.
 
+It will default to a simple text based diff, but can use the [dyff](https://github.com/homeport/dyff) rendering engine with the `--semantic` flag.
+
 ## Requirements
 * `make`
 * `git`
@@ -23,7 +25,9 @@ go install github.com/mozilla/mozcloud/tools/render-diff@latest
 | `--path` | `-p` | **(Required)** Relative path to the chart or kustomization directory. | `.` |
 | `--ref` | `-r` | Target Git ref to compare against. | `main` |
 | `--values` | `-f` | "Path to an additional values file (can be specified multiple times). The chart's default values.yaml is always loaded first" | `[]` |
+| `--release-name` | | "Helm release name to use when rendering templates. Defaults to chart name" | `""` |
 | `--update` | `-u` | Update helm chart dependencies. Required if lockfile does not match dependencies | `false` |
+| `--semantic` | `-s` |  Enable semantic diffing of k8s manifests (using dyff) | `false` |
 | `--debug` | `-d` | Enable verbose logging for debugging | `false` |
 | `--version` | | Prints the application version. | |
 | `--help` | `-h` | Show help information. | |
