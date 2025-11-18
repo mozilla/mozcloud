@@ -220,8 +220,8 @@ func init() {
 	rootCmd.PersistentFlags().StringSliceVarP(&valuesFlag, "values", "f", []string{}, "Path to an additional values file (can be specified multiple times)")
 	rootCmd.PersistentFlags().StringVarP(&releaseNameFlag, "release-name", "", "", "Helm release name to use when rendering templates. Defaults to chart name")
 	rootCmd.PersistentFlags().BoolVarP(&updateFlag, "update", "u", false, "Update helm chart dependencies. Required if lockfile does not match dependencies")
-	rootCmd.PersistentFlags().BoolVarP(&debugFlag, "debug", "d", false, "Enable verbose logging for debugging")
 	rootCmd.PersistentFlags().BoolVarP(&semanticDiffFlag, "semantic", "s", false, "Enable semantic diffing of k8s manifests (using dyff)")
+	rootCmd.PersistentFlags().BoolVarP(&debugFlag, "debug", "d", false, "Enable verbose logging for debugging")
 
 	rootCmd.Flags().SortFlags = false
 	rootCmd.PersistentFlags().SortFlags = false
