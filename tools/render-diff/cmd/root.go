@@ -29,6 +29,7 @@ var (
 	updateFlag       bool
 	debugFlag        bool
 	semanticDiffFlag bool
+	plainFlag        bool
 
 	repoRoot string
 	fullRef  string
@@ -167,7 +168,7 @@ It renders your local Helm chart or Kustomize overlay to compare the resulting m
 
 		if semanticDiffFlag {
 			// We are using a more complex diff engine (dyff) which is better suited for k8s manifest comparison
-			renderedDiff, err := diff.CreateSemanticDiff(targetRender, localRender, fmt.Sprintf("%s/%s", fullRef, relativePath), fmt.Sprintf("local/%s", relativePath))
+			renderedDiff, err := diff.CreateSemanticDiff(targetRender, localRender, fmt.Sprintf("%s/%s", fullRef, relativePath), fmt.Sprintf("local/%s", relativePath), plainFlag)
 			if err != nil {
 				return fmt.Errorf("error creating dyff: %w", err)
 			}
@@ -191,7 +192,7 @@ It renders your local Helm chart or Kustomize overlay to compare the resulting m
 				fmt.Println("\nNo differences found between rendered manifests.")
 			} else {
 				fmt.Printf("\n--- Diff (%s vs. local) ---\n", fullRef)
-				fmt.Println(diff.ColorizeDiff(renderedDiff))
+				fmt.Println(diff.ColorizeDiff(renderedDiff, plainFlag))
 
 			}
 		}
@@ -221,6 +222,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&releaseNameFlag, "release-name", "", "", "Helm release name to use when rendering templates. Defaults to chart name")
 	rootCmd.PersistentFlags().BoolVarP(&updateFlag, "update", "u", false, "Update helm chart dependencies. Required if lockfile does not match dependencies")
 	rootCmd.PersistentFlags().BoolVarP(&semanticDiffFlag, "semantic", "s", false, "Enable semantic diffing of k8s manifests (using dyff)")
+	rootCmd.PersistentFlags().BoolVarP(&plainFlag, "plain", "", false, "Output in plain style without any highlighting")
 	rootCmd.PersistentFlags().BoolVarP(&debugFlag, "debug", "d", false, "Enable verbose logging for debugging")
 
 	rootCmd.Flags().SortFlags = false
