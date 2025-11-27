@@ -8,6 +8,12 @@
               "capacityScaler": {
                 "type": "string"
               },
+              "clusterLabels": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
               "clusterName": {
                 "type": "string"
               },
@@ -22,6 +28,33 @@
               },
               "neg": {
                 "type": "string"
+              },
+              "serviceNegs": {
+                "items": {
+                  "properties": {
+                    "negs": {
+                      "items": {
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "selfLink": {
+                            "type": "string"
+                          }
+                        },
+                        "type": "object",
+                        "additionalProperties": false
+                      },
+                      "type": "array"
+                    },
+                    "port": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object",
+                  "additionalProperties": false
+                },
+                "type": "array"
               }
             },
             "type": "object",

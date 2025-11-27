@@ -44,10 +44,81 @@
           "minItems": 1,
           "type": "array"
         },
+        "haPolicy": {
+          "description": "HAPolicy determines whether or not this GKEIPRoute uses HAPolicy.\nCan only be set to non-nil if it's non fast failover persistent IP (non load-balancing).",
+          "type": "boolean",
+          "x-kubernetes-validations": [
+            {
+              "message": "HAPolicy is immutable",
+              "rule": "self == oldSelf"
+            }
+          ]
+        },
+        "loadBalancing": {
+          "description": "LoadBalancing defines the fields required to use a GKEIPRoute in a\nload-balancing setup.",
+          "properties": {
+            "healthCheckName": {
+              "description": "HealthCheckName is the name of the health check that will\nbe used to determine which endpoints associated with the\nGKEIPRoute are healthy, and route traffic accordingly. Must be\nin the same project and region as the cluster.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "healthCheckName"
+          ],
+          "type": "object",
+          "additionalProperties": false
+        },
         "network": {
           "default": "default",
           "description": "Network defines Pods network interface the prefixes will be attracted to. If not specified, we will use the Primary Network of the Pod.",
           "type": "string"
+        },
+        "nodeSelector": {
+          "description": "NodeSelector defines the nodes where GARPs are watched for fast failover. Must be\nset if and only if using Persistent IP with fast failover.",
+          "properties": {
+            "matchExpressions": {
+              "description": "matchExpressions is a list of label selector requirements. The requirements are ANDed.",
+              "items": {
+                "description": "A label selector requirement is a selector that contains values, a key, and an operator that\nrelates the key and values.",
+                "properties": {
+                  "key": {
+                    "description": "key is the label key that the selector applies to.",
+                    "type": "string"
+                  },
+                  "operator": {
+                    "description": "operator represents a key's relationship to a set of values.\nValid operators are In, NotIn, Exists and DoesNotExist.",
+                    "type": "string"
+                  },
+                  "values": {
+                    "description": "values is an array of string values. If the operator is In or NotIn,\nthe values array must be non-empty. If the operator is Exists or DoesNotExist,\nthe values array must be empty. This array is replaced during a strategic\nmerge patch.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array",
+                    "x-kubernetes-list-type": "atomic"
+                  }
+                },
+                "required": [
+                  "key",
+                  "operator"
+                ],
+                "type": "object",
+                "additionalProperties": false
+              },
+              "type": "array",
+              "x-kubernetes-list-type": "atomic"
+            },
+            "matchLabels": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels\nmap is equivalent to an element of matchExpressions, whose key field is \"key\", the\noperator is \"In\", and the values array contains only \"value\". The requirements are ANDed.",
+              "type": "object"
+            }
+          },
+          "type": "object",
+          "x-kubernetes-map-type": "atomic",
+          "additionalProperties": false
         },
         "parentRefs": {
           "description": "ParentRefs references the resources (usually Gateways) that a Route wants to be attached to. Note that the referenced parent resource needs to allow this for the attachment to be complete. For Gateways, that means the Gateway needs to allow attachment from Routes of this kind and namespace. \n The only kind of parent resource with \"Core\" support is Gateway. This API may be extended in the future to support additional kinds of parent resources such as one of the route kinds. \n It is invalid to reference an identical parent more than once. It is valid to reference multiple distinct sections within the same parent resource, such as 2 Listeners within a Gateway. \n It is possible to separately reference multiple distinct objects that may be collapsed by an implementation. For example, some implementations may choose to merge compatible Gateway Listeners together. If that is the case, the list of routes attached to those resources should also be merged.",
