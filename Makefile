@@ -63,7 +63,7 @@ extract: clone
 	@chmod +x "$(CRDS_CATALOG_DIR)/Utilities/crd-extractor.sh"
 	@mkdir -p "$(TARGET_DIR)"
 	@echo "Writing directly to: $(TARGET_DIR)"
-	@DATREE_CATALOG_OUTPUT_DIR="$(abspath $(TARGET_DIR))" \
+	@OUTPUT_DIR="$(abspath $(TARGET_DIR))" \
 		"$(CRDS_CATALOG_DIR)/Utilities/crd-extractor.sh"
 
 clean:

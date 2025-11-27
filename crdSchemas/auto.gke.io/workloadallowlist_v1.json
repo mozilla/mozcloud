@@ -5,6 +5,31 @@
       "description": "APIVersion defines the versioned schema of this representation of an object.\nServers should convert recognized schemas to the latest internal value, and\nmay reject unrecognized values.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
       "type": "string"
     },
+    "containerImageDigests": {
+      "description": "ContainerImageDigests contains an optional list of accepted image digests\nfor each container in the MatchingCriteria.\nA workload's image will match the allowlist's image if either they\nmatch directly, or the workload's image (1) specifies a hash, and\n(2) that hash is present in the container's ImageDigests.",
+      "items": {
+        "properties": {
+          "containerName": {
+            "description": "The name of the container which accepts the image digests.",
+            "type": "string"
+          },
+          "imageDigests": {
+            "description": "The image SHA256 image digests that will be accepted.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "containerName",
+          "imageDigests"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "type": "array"
+    },
     "exemptions": {
       "description": "GKE Warden constraints that this workload allowlist exempts.",
       "items": {
@@ -17,33 +42,33 @@
       "type": "string"
     },
     "matchingCriteria": {
-      "description": "PodSpec          corev1.PodSpec   `json:\"podSpec\"`",
+      "description": "MatchingCriteria is a subset of podSpec containing criteria that a workload's\npod spec needs to match in order to be admitted into the cluster",
       "properties": {
         "containers": {
           "items": {
-            "description": "Container is a subset of the properties used to define a running container.",
+            "description": "Container is a subset of the properties used to define a running container.\nEach individiual container in the workload must meet container match criteria.\nThe containers/initContainers in a workload may be a subset of the containers/initContainers in an allowlist.",
             "properties": {
               "args": {
-                "description": "Arguments to the entrypoint.\nThe container image's CMD is used if this is not provided.\nVariable references $(VAR_NAME) are expanded using the container's environment. If a variable\ncannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced\nto a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. \"$$(VAR_NAME)\" will\nproduce the string literal \"$(VAR_NAME)\". Escaped references will never be expanded, regardless\nof whether the variable exists or not. Cannot be updated.\nMore info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
+                "description": "Arguments to the entrypoint.\nMust contain all of the arguments in the workload's container\nThe arguments in a workload's container may be a subset of the arguments in an allowlist.\nSupports using regex patterns for arguments that may have multiple possible values & permutations\n\n\nIn order for an arg to be treated as a regex pattern it must be anchored with a caret (^)\nat the beginning of the string and a dollar sign ($) at the end of the string.",
                 "items": {
                   "type": "string"
                 },
                 "type": "array"
               },
               "command": {
-                "description": "Entrypoint array. Not executed within a shell.\nThe container image's ENTRYPOINT is used if this is not provided.\nVariable references $(VAR_NAME) are expanded using the container's environment. If a variable\ncannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced\nto a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. \"$$(VAR_NAME)\" will\nproduce the string literal \"$(VAR_NAME)\". Escaped references will never be expanded, regardless\nof whether the variable exists or not. Cannot be updated.\nMore info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
+                "description": "Entrypoint array. Not executed within a shell.\nMust be an exact match to the command's in the workload's container",
                 "items": {
                   "type": "string"
                 },
                 "type": "array"
               },
               "env": {
-                "description": "List of environment variables to set in the container.\nCannot be updated.",
+                "description": "List of environment variables to set in the container.\nEach env name can be a plain string or regex (for matching with multiple envs that follow a similar pattern)\nEach individual env in the workload\u2019s container must have name equal to an env in the allowlist\u2019s container (or regex match).\nAll other sub-fields of env are ignored.\nThe envs in a workload container may be a subset of the envs in an allowlist container.",
                 "items": {
                   "description": "EnvVar represents an environment variable present in a Container.",
                   "properties": {
                     "name": {
-                      "description": "Name of the environment variable. Must be a C_IDENTIFIER.",
+                      "description": "Name of the environment variable. Must be a C_IDENTIFIER.\nSupports using regex to match with multiple envs that follow a similar pattern\nEnv name present in the workload must be an exact match or follow regex pattern of the allowlist's env name\n\n\nIn order for an ENV name to be treated as a regex pattern it must be anchored with a caret (^)\nat the beginning of the string and a dollar sign ($) at the end of the string.",
                       "type": "string"
                     }
                   },
@@ -56,7 +81,7 @@
                 "type": "array"
               },
               "envFrom": {
-                "description": "List of sources to populate environment variables in the container.\nThe keys defined within a source must be a C_IDENTIFIER. All invalid keys\nwill be reported as an event when the container is starting. When a key exists in multiple\nsources, the value associated with the last source will take precedence.\nValues defined by an Env with a duplicate key will take precedence.\nCannot be updated.",
+                "description": "List of sources to populate environment variables in the container.\nEach individual envFrom in the allowlist's container must have the configMapRef.Name or secretMapRef.Name values equal to the envFrom values in the workload\u2019s container.\nAll other sub-fields of env are ignored.\nThe envFroms in a workload container may be a subset of the envFroms in an allowlist container.",
                 "items": {
                   "description": "EnvFromSource is a subset of core/v1 EnvFromSource\npreserving fields used for allowlisting.",
                   "properties": {
@@ -64,7 +89,7 @@
                       "description": "The ConfigMap to select from",
                       "properties": {
                         "name": {
-                          "description": "The name of the ConfigMap to select from.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                          "description": "The name of the ConfigMap to select from.\nMust be exact match to value present in workload",
                           "type": "string"
                         }
                       },
@@ -75,7 +100,7 @@
                       "description": "The Secret to select from",
                       "properties": {
                         "name": {
-                          "description": "The name of the Secret to select from.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                          "description": "The name of the Secret to select from.\nMust be exact match to value present in workload",
                           "type": "string"
                         }
                       },
@@ -89,20 +114,20 @@
                 "type": "array"
               },
               "image": {
-                "description": "Container image name.\nMore info: https://kubernetes.io/docs/concepts/containers/images\nThis field is optional to allow higher level config management to default or override\ncontainer images in workload controllers like Deployments and StatefulSets.",
+                "description": "Container image name.\nMore info: https://kubernetes.io/docs/concepts/containers/images\nInclude only the image path and exclude digest/image tag.\nThis can either be an exact string match or a matching regex pattern to the workload's container image.\n\n\nIn order for the image path to be treated as a regex pattern it must be anchored with a caret (^)\nat the beginning of the string and a dollar sign ($) at the end of the string.",
                 "type": "string"
               },
               "lifecycle": {
-                "description": "Actions that the management system should take in response to container lifecycle events.\nCannot be updated.",
+                "description": "LifecycleSubset is functionally a subset of core/v1 Lifecycle, preserving only\nfields used for allowlisting.",
                 "properties": {
                   "postStart": {
-                    "description": "PostStart is called immediately after a container is created. If the handler fails,\nthe container is terminated and restarted according to its restart policy.\nOther management of the container blocks until the hook completes.\nMore info: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks",
+                    "description": "Only exec field is required if present in workload container.\nAll other sub-fields ignored.",
                     "properties": {
                       "exec": {
-                        "description": "Exec specifies the action to take.",
+                        "description": "Exec specifies the action to take.\nMust match value present in workload container",
                         "properties": {
                           "command": {
-                            "description": "Command is the command line to execute inside the container, the working directory for the\ncommand  is root ('/') in the container's filesystem. The command is simply exec'd, it is\nnot run inside a shell, so traditional shell instructions ('|', etc) won't work. To use\na shell, you need to explicitly call out to that shell.\nExit status of 0 is treated as live/healthy and non-zero is unhealthy.",
+                            "description": "Must be an exact match to the commands specified in the workload",
                             "items": {
                               "type": "string"
                             },
@@ -117,13 +142,13 @@
                     "additionalProperties": false
                   },
                   "preStop": {
-                    "description": "PreStop is called immediately before a container is terminated due to an\nAPI request or management event such as liveness/startup probe failure,\npreemption, resource contention, etc. The handler is not called if the\ncontainer crashes or exits. The Pod's termination grace period countdown begins before the\nPreStop hook is executed. Regardless of the outcome of the handler, the\ncontainer will eventually terminate within the Pod's termination grace\nperiod (unless delayed by finalizers). Other management of the container blocks until the hook completes\nor until the termination grace period is reached.\nMore info: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks",
+                    "description": "Only exec field is required if present in workload container.\nAll other sub-fields ignored.",
                     "properties": {
                       "exec": {
-                        "description": "Exec specifies the action to take.",
+                        "description": "Exec specifies the action to take.\nMust match value present in workload container",
                         "properties": {
                           "command": {
-                            "description": "Command is the command line to execute inside the container, the working directory for the\ncommand  is root ('/') in the container's filesystem. The command is simply exec'd, it is\nnot run inside a shell, so traditional shell instructions ('|', etc) won't work. To use\na shell, you need to explicitly call out to that shell.\nExit status of 0 is treated as live/healthy and non-zero is unhealthy.",
+                            "description": "Must be an exact match to the commands specified in the workload",
                             "items": {
                               "type": "string"
                             },
@@ -142,13 +167,13 @@
                 "additionalProperties": false
               },
               "livenessProbe": {
-                "description": "Periodic probe of container liveness.\nContainer will be restarted if the probe fails.\nCannot be updated.\nMore info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+                "description": "Periodic probe of container liveness.\nMust be an exact match to the LivenessProbe value in the workload's container",
                 "properties": {
                   "exec": {
-                    "description": "Exec specifies the action to take.",
+                    "description": "Exec specifies the action to take.\nMust match value present in workload container",
                     "properties": {
                       "command": {
-                        "description": "Command is the command line to execute inside the container, the working directory for the\ncommand  is root ('/') in the container's filesystem. The command is simply exec'd, it is\nnot run inside a shell, so traditional shell instructions ('|', etc) won't work. To use\na shell, you need to explicitly call out to that shell.\nExit status of 0 is treated as live/healthy and non-zero is unhealthy.",
+                        "description": "Must be an exact match to the commands specified in the workload",
                         "items": {
                           "type": "string"
                         },
@@ -167,13 +192,13 @@
                 "type": "string"
               },
               "readinessProbe": {
-                "description": "Periodic probe of container service readiness.\nContainer will be removed from service endpoints if the probe fails.\nCannot be updated.\nMore info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+                "description": "Periodic probe of container service readiness.\nMust be an exact match to the readinessProbe value in the workload's container",
                 "properties": {
                   "exec": {
-                    "description": "Exec specifies the action to take.",
+                    "description": "Exec specifies the action to take.\nMust match value present in workload container",
                     "properties": {
                       "command": {
-                        "description": "Command is the command line to execute inside the container, the working directory for the\ncommand  is root ('/') in the container's filesystem. The command is simply exec'd, it is\nnot run inside a shell, so traditional shell instructions ('|', etc) won't work. To use\na shell, you need to explicitly call out to that shell.\nExit status of 0 is treated as live/healthy and non-zero is unhealthy.",
+                        "description": "Must be an exact match to the commands specified in the workload",
                         "items": {
                           "type": "string"
                         },
@@ -188,13 +213,31 @@
                 "additionalProperties": false
               },
               "securityContext": {
-                "description": "SecurityContext defines the security options the container should be run with.\nIf set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.\nMore info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/",
+                "description": "SecurityContext is functionally a subset of core/v1 SecurityContext,\npreserving only fields used for allowlisting.\nOnly Capabilities, Privileged, and appArmorProfile subfields\nare used for workload matching",
                 "properties": {
+                  "appArmorProfile": {
+                    "description": "AppArmorProfile defines the minimum level of security for the AppArmorProfile of\nallowlisted workloads. Valid configurations are summarized in this table:\n|   Allowlist    |                   Workload                   |\n| omit           | omit, RuntimeDefault                         |\n| Unconfined     | omit,Unconfined,RuntimeDefault,LocalHost     |\n| RuntimeDefault | RuntimeDefault                               |\n| LocalHost      | LocalHost (plus exact match of profile name) |",
+                    "properties": {
+                      "localhostProfile": {
+                        "description": "The profile loaded on the node that matching workloads must specify.\nMust be set if and only if type is \"Localhost\".",
+                        "type": "string"
+                      },
+                      "type": {
+                        "description": "Type indicates which kind of AppArmor profile will be applied.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ],
+                    "type": "object",
+                    "additionalProperties": false
+                  },
                   "capabilities": {
-                    "description": "The capabilities to add/drop when running containers.\nDefaults to the default set of capabilities granted by the container runtime.\nNote that this field cannot be set when spec.os.name is windows.",
+                    "description": "The capabilities to add/drop when running containers.",
                     "properties": {
                       "add": {
-                        "description": "Added capabilities",
+                        "description": "Added capabilities\nThis should contain a list of all of capabilities that a workload may add.\nA workload may contain fewer added capabilities than what is present in the allowlist.",
                         "items": {
                           "description": "Capability represent POSIX capabilities type",
                           "type": "string"
@@ -202,7 +245,7 @@
                         "type": "array"
                       },
                       "drop": {
-                        "description": "Removed capabilities",
+                        "description": "Removed capabilities\nShould contain a list of all of capabilities that a workload is required to drop.\nA workload may contain additional dropped capabilities than what is present in the allowlist.",
                         "items": {
                           "description": "Capability represent POSIX capabilities type",
                           "type": "string"
@@ -214,7 +257,7 @@
                     "additionalProperties": false
                   },
                   "privileged": {
-                    "description": "Run container in privileged mode.\nProcesses in privileged containers are essentially equivalent to root on the host.\nDefaults to false.\nNote that this field cannot be set when spec.os.name is windows.",
+                    "description": "Run container in privileged mode.\nMust be true if workload has this set to true. Otherwise, it can be omitted or explicitly set to false.",
                     "type": "boolean"
                   }
                 },
@@ -222,13 +265,13 @@
                 "additionalProperties": false
               },
               "startupProbe": {
-                "description": "StartupProbe indicates that the Pod has successfully initialized.\nIf specified, no other probes are executed until this completes successfully.\nIf this probe fails, the Pod will be restarted, just as if the livenessProbe failed.\nThis can be used to provide different probe parameters at the beginning of a Pod's lifecycle,\nwhen it might take a long time to load data or warm a cache, than during steady-state operation.\nThis cannot be updated.\nMore info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+                "description": "StartupProbe indicates that the Pod has successfully initialized.\nMust be an exact match to the startupProbe value in the workload's container",
                 "properties": {
                   "exec": {
-                    "description": "Exec specifies the action to take.",
+                    "description": "Exec specifies the action to take.\nMust match value present in workload container",
                     "properties": {
                       "command": {
-                        "description": "Command is the command line to execute inside the container, the working directory for the\ncommand  is root ('/') in the container's filesystem. The command is simply exec'd, it is\nnot run inside a shell, so traditional shell instructions ('|', etc) won't work. To use\na shell, you need to explicitly call out to that shell.\nExit status of 0 is treated as live/healthy and non-zero is unhealthy.",
+                        "description": "Must be an exact match to the commands specified in the workload",
                         "items": {
                           "type": "string"
                         },
@@ -243,16 +286,16 @@
                 "additionalProperties": false
               },
               "volumeDevices": {
-                "description": "volumeDevices is the list of block devices to be used by the container.",
+                "description": "volumeDevices is the list of block devices to be used by the container.\nThe volumeDevices in a workload\u2019s container may be a subset of the volumeMounts in an allowlist\u2019s container.",
                 "items": {
-                  "description": "VolumeDevice describes a mapping of a raw block device within a container.",
+                  "description": "VolumeDevice describes a mapping of a raw block device within a container.\nMust be an exact match to value present in the workload",
                   "properties": {
                     "devicePath": {
-                      "description": "devicePath is the path inside of the container that the device will be mapped to.",
+                      "description": "devicePath is the path inside of the container that the device will be mapped to.\nMust be exact match to devicePath present in the workload",
                       "type": "string"
                     },
                     "name": {
-                      "description": "name must match the name of a persistentVolumeClaim in the pod",
+                      "description": "Must be exact match to name present in the worklaod",
                       "type": "string"
                     }
                   },
@@ -266,21 +309,25 @@
                 "type": "array"
               },
               "volumeMounts": {
-                "description": "Pod volumes to mount into the container's filesystem.\nCannot be updated.",
+                "description": "Pod volumes to mount into the container's filesystem.\nThe VolumeMounts in a workload\u2019s container may be a subset of the volumeMounts in an allowlist\u2019s container.",
                 "items": {
-                  "description": "VolumeMount is functionally a subset of core/v1 VolumeMount,\npreserving only fields used for allowlisting.",
+                  "description": "VolumeMount is functionally a subset of core/v1 VolumeMount,\npreserving only fields used for allowlisting.\nOnly name, readOnly, and mountPath subfields required for workload matching.\nAll other sub-fields are ignored.",
                   "properties": {
                     "mountPath": {
-                      "description": "Path within the container at which the volume should be mounted.  Must\nnot contain ':'.",
+                      "description": "Path within the container at which the volume should be mounted.  Must\nnot contain ':'.\nMust be exact match to value present in the workload",
                       "type": "string"
                     },
                     "name": {
-                      "description": "This must match the Name of a Volume.",
+                      "description": "This must match the Name of a Volume.\nMust be exact match to a volumeMount name in the workload container",
                       "type": "string"
                     },
                     "readOnly": {
-                      "description": "Mounted read-only if true, read-write otherwise (false or unspecified).\nDefaults to false.",
+                      "description": "Mounted read-only if true, read-write otherwise (false or unspecified).\nDefaults to false.\nThe allowlist must have this field omitted or explicitly set to false if the workload does not have readOnly set to true.\nValue is ignored if workload has this set to true",
                       "type": "boolean"
+                    },
+                    "subPath": {
+                      "description": "Path within the volume from which the container's volume should be mounted.\nDefaults to \"\" (volume's root).\nIf present in allowlist, workload must have an exact match.",
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -302,42 +349,46 @@
           "type": "array"
         },
         "hostIPC": {
+          "description": "Must be true if workload has this set to true. Otherwise, it can be omitted or explicitly set to false.",
           "type": "boolean"
         },
         "hostNetwork": {
+          "description": "Must be true if workload has this set to true. Otherwise, it can be omitted or explicitly set to false.",
           "type": "boolean"
         },
         "hostPID": {
+          "description": "Must be true if workload has this set to true. Otherwise, it can be omitted or explicitly set to false.",
           "type": "boolean"
         },
         "hostUsers": {
+          "description": "Must be true if workload has this set to true. Otherwise, it can be omitted or explicitly set to false.",
           "type": "boolean"
         },
         "initContainers": {
           "items": {
-            "description": "Container is a subset of the properties used to define a running container.",
+            "description": "Container is a subset of the properties used to define a running container.\nEach individiual container in the workload must meet container match criteria.\nThe containers/initContainers in a workload may be a subset of the containers/initContainers in an allowlist.",
             "properties": {
               "args": {
-                "description": "Arguments to the entrypoint.\nThe container image's CMD is used if this is not provided.\nVariable references $(VAR_NAME) are expanded using the container's environment. If a variable\ncannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced\nto a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. \"$$(VAR_NAME)\" will\nproduce the string literal \"$(VAR_NAME)\". Escaped references will never be expanded, regardless\nof whether the variable exists or not. Cannot be updated.\nMore info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
+                "description": "Arguments to the entrypoint.\nMust contain all of the arguments in the workload's container\nThe arguments in a workload's container may be a subset of the arguments in an allowlist.\nSupports using regex patterns for arguments that may have multiple possible values & permutations\n\n\nIn order for an arg to be treated as a regex pattern it must be anchored with a caret (^)\nat the beginning of the string and a dollar sign ($) at the end of the string.",
                 "items": {
                   "type": "string"
                 },
                 "type": "array"
               },
               "command": {
-                "description": "Entrypoint array. Not executed within a shell.\nThe container image's ENTRYPOINT is used if this is not provided.\nVariable references $(VAR_NAME) are expanded using the container's environment. If a variable\ncannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced\nto a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. \"$$(VAR_NAME)\" will\nproduce the string literal \"$(VAR_NAME)\". Escaped references will never be expanded, regardless\nof whether the variable exists or not. Cannot be updated.\nMore info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
+                "description": "Entrypoint array. Not executed within a shell.\nMust be an exact match to the command's in the workload's container",
                 "items": {
                   "type": "string"
                 },
                 "type": "array"
               },
               "env": {
-                "description": "List of environment variables to set in the container.\nCannot be updated.",
+                "description": "List of environment variables to set in the container.\nEach env name can be a plain string or regex (for matching with multiple envs that follow a similar pattern)\nEach individual env in the workload\u2019s container must have name equal to an env in the allowlist\u2019s container (or regex match).\nAll other sub-fields of env are ignored.\nThe envs in a workload container may be a subset of the envs in an allowlist container.",
                 "items": {
                   "description": "EnvVar represents an environment variable present in a Container.",
                   "properties": {
                     "name": {
-                      "description": "Name of the environment variable. Must be a C_IDENTIFIER.",
+                      "description": "Name of the environment variable. Must be a C_IDENTIFIER.\nSupports using regex to match with multiple envs that follow a similar pattern\nEnv name present in the workload must be an exact match or follow regex pattern of the allowlist's env name\n\n\nIn order for an ENV name to be treated as a regex pattern it must be anchored with a caret (^)\nat the beginning of the string and a dollar sign ($) at the end of the string.",
                       "type": "string"
                     }
                   },
@@ -350,7 +401,7 @@
                 "type": "array"
               },
               "envFrom": {
-                "description": "List of sources to populate environment variables in the container.\nThe keys defined within a source must be a C_IDENTIFIER. All invalid keys\nwill be reported as an event when the container is starting. When a key exists in multiple\nsources, the value associated with the last source will take precedence.\nValues defined by an Env with a duplicate key will take precedence.\nCannot be updated.",
+                "description": "List of sources to populate environment variables in the container.\nEach individual envFrom in the allowlist's container must have the configMapRef.Name or secretMapRef.Name values equal to the envFrom values in the workload\u2019s container.\nAll other sub-fields of env are ignored.\nThe envFroms in a workload container may be a subset of the envFroms in an allowlist container.",
                 "items": {
                   "description": "EnvFromSource is a subset of core/v1 EnvFromSource\npreserving fields used for allowlisting.",
                   "properties": {
@@ -358,7 +409,7 @@
                       "description": "The ConfigMap to select from",
                       "properties": {
                         "name": {
-                          "description": "The name of the ConfigMap to select from.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                          "description": "The name of the ConfigMap to select from.\nMust be exact match to value present in workload",
                           "type": "string"
                         }
                       },
@@ -369,7 +420,7 @@
                       "description": "The Secret to select from",
                       "properties": {
                         "name": {
-                          "description": "The name of the Secret to select from.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                          "description": "The name of the Secret to select from.\nMust be exact match to value present in workload",
                           "type": "string"
                         }
                       },
@@ -383,20 +434,20 @@
                 "type": "array"
               },
               "image": {
-                "description": "Container image name.\nMore info: https://kubernetes.io/docs/concepts/containers/images\nThis field is optional to allow higher level config management to default or override\ncontainer images in workload controllers like Deployments and StatefulSets.",
+                "description": "Container image name.\nMore info: https://kubernetes.io/docs/concepts/containers/images\nInclude only the image path and exclude digest/image tag.\nThis can either be an exact string match or a matching regex pattern to the workload's container image.\n\n\nIn order for the image path to be treated as a regex pattern it must be anchored with a caret (^)\nat the beginning of the string and a dollar sign ($) at the end of the string.",
                 "type": "string"
               },
               "lifecycle": {
-                "description": "Actions that the management system should take in response to container lifecycle events.\nCannot be updated.",
+                "description": "LifecycleSubset is functionally a subset of core/v1 Lifecycle, preserving only\nfields used for allowlisting.",
                 "properties": {
                   "postStart": {
-                    "description": "PostStart is called immediately after a container is created. If the handler fails,\nthe container is terminated and restarted according to its restart policy.\nOther management of the container blocks until the hook completes.\nMore info: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks",
+                    "description": "Only exec field is required if present in workload container.\nAll other sub-fields ignored.",
                     "properties": {
                       "exec": {
-                        "description": "Exec specifies the action to take.",
+                        "description": "Exec specifies the action to take.\nMust match value present in workload container",
                         "properties": {
                           "command": {
-                            "description": "Command is the command line to execute inside the container, the working directory for the\ncommand  is root ('/') in the container's filesystem. The command is simply exec'd, it is\nnot run inside a shell, so traditional shell instructions ('|', etc) won't work. To use\na shell, you need to explicitly call out to that shell.\nExit status of 0 is treated as live/healthy and non-zero is unhealthy.",
+                            "description": "Must be an exact match to the commands specified in the workload",
                             "items": {
                               "type": "string"
                             },
@@ -411,13 +462,13 @@
                     "additionalProperties": false
                   },
                   "preStop": {
-                    "description": "PreStop is called immediately before a container is terminated due to an\nAPI request or management event such as liveness/startup probe failure,\npreemption, resource contention, etc. The handler is not called if the\ncontainer crashes or exits. The Pod's termination grace period countdown begins before the\nPreStop hook is executed. Regardless of the outcome of the handler, the\ncontainer will eventually terminate within the Pod's termination grace\nperiod (unless delayed by finalizers). Other management of the container blocks until the hook completes\nor until the termination grace period is reached.\nMore info: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks",
+                    "description": "Only exec field is required if present in workload container.\nAll other sub-fields ignored.",
                     "properties": {
                       "exec": {
-                        "description": "Exec specifies the action to take.",
+                        "description": "Exec specifies the action to take.\nMust match value present in workload container",
                         "properties": {
                           "command": {
-                            "description": "Command is the command line to execute inside the container, the working directory for the\ncommand  is root ('/') in the container's filesystem. The command is simply exec'd, it is\nnot run inside a shell, so traditional shell instructions ('|', etc) won't work. To use\na shell, you need to explicitly call out to that shell.\nExit status of 0 is treated as live/healthy and non-zero is unhealthy.",
+                            "description": "Must be an exact match to the commands specified in the workload",
                             "items": {
                               "type": "string"
                             },
@@ -436,13 +487,13 @@
                 "additionalProperties": false
               },
               "livenessProbe": {
-                "description": "Periodic probe of container liveness.\nContainer will be restarted if the probe fails.\nCannot be updated.\nMore info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+                "description": "Periodic probe of container liveness.\nMust be an exact match to the LivenessProbe value in the workload's container",
                 "properties": {
                   "exec": {
-                    "description": "Exec specifies the action to take.",
+                    "description": "Exec specifies the action to take.\nMust match value present in workload container",
                     "properties": {
                       "command": {
-                        "description": "Command is the command line to execute inside the container, the working directory for the\ncommand  is root ('/') in the container's filesystem. The command is simply exec'd, it is\nnot run inside a shell, so traditional shell instructions ('|', etc) won't work. To use\na shell, you need to explicitly call out to that shell.\nExit status of 0 is treated as live/healthy and non-zero is unhealthy.",
+                        "description": "Must be an exact match to the commands specified in the workload",
                         "items": {
                           "type": "string"
                         },
@@ -461,13 +512,13 @@
                 "type": "string"
               },
               "readinessProbe": {
-                "description": "Periodic probe of container service readiness.\nContainer will be removed from service endpoints if the probe fails.\nCannot be updated.\nMore info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+                "description": "Periodic probe of container service readiness.\nMust be an exact match to the readinessProbe value in the workload's container",
                 "properties": {
                   "exec": {
-                    "description": "Exec specifies the action to take.",
+                    "description": "Exec specifies the action to take.\nMust match value present in workload container",
                     "properties": {
                       "command": {
-                        "description": "Command is the command line to execute inside the container, the working directory for the\ncommand  is root ('/') in the container's filesystem. The command is simply exec'd, it is\nnot run inside a shell, so traditional shell instructions ('|', etc) won't work. To use\na shell, you need to explicitly call out to that shell.\nExit status of 0 is treated as live/healthy and non-zero is unhealthy.",
+                        "description": "Must be an exact match to the commands specified in the workload",
                         "items": {
                           "type": "string"
                         },
@@ -482,13 +533,31 @@
                 "additionalProperties": false
               },
               "securityContext": {
-                "description": "SecurityContext defines the security options the container should be run with.\nIf set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.\nMore info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/",
+                "description": "SecurityContext is functionally a subset of core/v1 SecurityContext,\npreserving only fields used for allowlisting.\nOnly Capabilities, Privileged, and appArmorProfile subfields\nare used for workload matching",
                 "properties": {
+                  "appArmorProfile": {
+                    "description": "AppArmorProfile defines the minimum level of security for the AppArmorProfile of\nallowlisted workloads. Valid configurations are summarized in this table:\n|   Allowlist    |                   Workload                   |\n| omit           | omit, RuntimeDefault                         |\n| Unconfined     | omit,Unconfined,RuntimeDefault,LocalHost     |\n| RuntimeDefault | RuntimeDefault                               |\n| LocalHost      | LocalHost (plus exact match of profile name) |",
+                    "properties": {
+                      "localhostProfile": {
+                        "description": "The profile loaded on the node that matching workloads must specify.\nMust be set if and only if type is \"Localhost\".",
+                        "type": "string"
+                      },
+                      "type": {
+                        "description": "Type indicates which kind of AppArmor profile will be applied.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ],
+                    "type": "object",
+                    "additionalProperties": false
+                  },
                   "capabilities": {
-                    "description": "The capabilities to add/drop when running containers.\nDefaults to the default set of capabilities granted by the container runtime.\nNote that this field cannot be set when spec.os.name is windows.",
+                    "description": "The capabilities to add/drop when running containers.",
                     "properties": {
                       "add": {
-                        "description": "Added capabilities",
+                        "description": "Added capabilities\nThis should contain a list of all of capabilities that a workload may add.\nA workload may contain fewer added capabilities than what is present in the allowlist.",
                         "items": {
                           "description": "Capability represent POSIX capabilities type",
                           "type": "string"
@@ -496,7 +565,7 @@
                         "type": "array"
                       },
                       "drop": {
-                        "description": "Removed capabilities",
+                        "description": "Removed capabilities\nShould contain a list of all of capabilities that a workload is required to drop.\nA workload may contain additional dropped capabilities than what is present in the allowlist.",
                         "items": {
                           "description": "Capability represent POSIX capabilities type",
                           "type": "string"
@@ -508,7 +577,7 @@
                     "additionalProperties": false
                   },
                   "privileged": {
-                    "description": "Run container in privileged mode.\nProcesses in privileged containers are essentially equivalent to root on the host.\nDefaults to false.\nNote that this field cannot be set when spec.os.name is windows.",
+                    "description": "Run container in privileged mode.\nMust be true if workload has this set to true. Otherwise, it can be omitted or explicitly set to false.",
                     "type": "boolean"
                   }
                 },
@@ -516,13 +585,13 @@
                 "additionalProperties": false
               },
               "startupProbe": {
-                "description": "StartupProbe indicates that the Pod has successfully initialized.\nIf specified, no other probes are executed until this completes successfully.\nIf this probe fails, the Pod will be restarted, just as if the livenessProbe failed.\nThis can be used to provide different probe parameters at the beginning of a Pod's lifecycle,\nwhen it might take a long time to load data or warm a cache, than during steady-state operation.\nThis cannot be updated.\nMore info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+                "description": "StartupProbe indicates that the Pod has successfully initialized.\nMust be an exact match to the startupProbe value in the workload's container",
                 "properties": {
                   "exec": {
-                    "description": "Exec specifies the action to take.",
+                    "description": "Exec specifies the action to take.\nMust match value present in workload container",
                     "properties": {
                       "command": {
-                        "description": "Command is the command line to execute inside the container, the working directory for the\ncommand  is root ('/') in the container's filesystem. The command is simply exec'd, it is\nnot run inside a shell, so traditional shell instructions ('|', etc) won't work. To use\na shell, you need to explicitly call out to that shell.\nExit status of 0 is treated as live/healthy and non-zero is unhealthy.",
+                        "description": "Must be an exact match to the commands specified in the workload",
                         "items": {
                           "type": "string"
                         },
@@ -537,16 +606,16 @@
                 "additionalProperties": false
               },
               "volumeDevices": {
-                "description": "volumeDevices is the list of block devices to be used by the container.",
+                "description": "volumeDevices is the list of block devices to be used by the container.\nThe volumeDevices in a workload\u2019s container may be a subset of the volumeMounts in an allowlist\u2019s container.",
                 "items": {
-                  "description": "VolumeDevice describes a mapping of a raw block device within a container.",
+                  "description": "VolumeDevice describes a mapping of a raw block device within a container.\nMust be an exact match to value present in the workload",
                   "properties": {
                     "devicePath": {
-                      "description": "devicePath is the path inside of the container that the device will be mapped to.",
+                      "description": "devicePath is the path inside of the container that the device will be mapped to.\nMust be exact match to devicePath present in the workload",
                       "type": "string"
                     },
                     "name": {
-                      "description": "name must match the name of a persistentVolumeClaim in the pod",
+                      "description": "Must be exact match to name present in the worklaod",
                       "type": "string"
                     }
                   },
@@ -560,21 +629,25 @@
                 "type": "array"
               },
               "volumeMounts": {
-                "description": "Pod volumes to mount into the container's filesystem.\nCannot be updated.",
+                "description": "Pod volumes to mount into the container's filesystem.\nThe VolumeMounts in a workload\u2019s container may be a subset of the volumeMounts in an allowlist\u2019s container.",
                 "items": {
-                  "description": "VolumeMount is functionally a subset of core/v1 VolumeMount,\npreserving only fields used for allowlisting.",
+                  "description": "VolumeMount is functionally a subset of core/v1 VolumeMount,\npreserving only fields used for allowlisting.\nOnly name, readOnly, and mountPath subfields required for workload matching.\nAll other sub-fields are ignored.",
                   "properties": {
                     "mountPath": {
-                      "description": "Path within the container at which the volume should be mounted.  Must\nnot contain ':'.",
+                      "description": "Path within the container at which the volume should be mounted.  Must\nnot contain ':'.\nMust be exact match to value present in the workload",
                       "type": "string"
                     },
                     "name": {
-                      "description": "This must match the Name of a Volume.",
+                      "description": "This must match the Name of a Volume.\nMust be exact match to a volumeMount name in the workload container",
                       "type": "string"
                     },
                     "readOnly": {
-                      "description": "Mounted read-only if true, read-write otherwise (false or unspecified).\nDefaults to false.",
+                      "description": "Mounted read-only if true, read-write otherwise (false or unspecified).\nDefaults to false.\nThe allowlist must have this field omitted or explicitly set to false if the workload does not have readOnly set to true.\nValue is ignored if workload has this set to true",
                       "type": "boolean"
+                    },
+                    "subPath": {
+                      "description": "Path within the volume from which the container's volume should be mounted.\nDefaults to \"\" (volume's root).\nIf present in allowlist, workload must have an exact match.",
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -596,34 +669,64 @@
           "type": "array"
         },
         "securityContext": {
-          "description": "PodSecurityContext is functionally a subset of core/v1 PodSecurityContext,\npreserving only fields used for allowlisting.",
+          "description": "PodSecurityContext is a subset of core/v1 PodSecurityContext,\npreserving only fields used for allowlisting.",
           "properties": {
-            "fsGroupChangePolicy": {
-              "description": "fsGroupChangePolicy defines behavior of changing ownership and permission of the volume\nbefore being exposed inside Pod. This field will only apply to\nvolume types which support fsGroup based ownership(and permissions).\nIt will have no effect on ephemeral volume types such as: secret, configmaps\nand emptydir.\nValid values are \"OnRootMismatch\" and \"Always\". If not specified, \"Always\" is used.\nNote that this field cannot be set when spec.os.name is windows.",
-              "type": "string"
+            "appArmorProfile": {
+              "description": "AppArmorProfile defines the minimum level of security for the AppArmorProfile of\nallowlisted workloads. Valid configurations are summarized in this table:\n|   Allowlist    |                   Workload                   |\n| omit           | omit, RuntimeDefault                         |\n| Unconfined     | omit,Unconfined,RuntimeDefault,LocalHost     |\n| RuntimeDefault | RuntimeDefault                               |\n| LocalHost      | LocalHost (plus exact match of profile name) |",
+              "properties": {
+                "localhostProfile": {
+                  "description": "The profile loaded on the node that matching workloads must specify.\nMust be set if and only if type is \"Localhost\".",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Type indicates which kind of AppArmor profile will be applied.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object",
+              "additionalProperties": false
             }
           },
           "type": "object",
           "additionalProperties": false
         },
         "volumes": {
+          "description": "Each individual volume in the workload must match with a volume present in the allowlist\nThe volumes in a workload may be a subset of the volumes in an allowlist.",
           "items": {
-            "description": "Volume represents a named volume in a pod that may be accessed by any\ncontainer in the pod.",
+            "description": "Volume is functionally a subset of core/v1 Volume,\npreserving only fields used for allowlisting.",
             "properties": {
+              "configMap": {
+                "description": "configMap represents a configMap that should populate this volume.\nAn allowlist only needs to include this field if wants to specify the use\nof a non-default value for the defaultMode subfield.",
+                "properties": {
+                  "defaultMode": {
+                    "description": "defaultMode is optional: mode bits used to set permissions on created files by default.\nMust be an octal value between 0000 and 0777 or a decimal value between 0 and 511.\nYAML accepts both octal and decimal values, JSON requires decimal values for mode bits.\nIf omitted, any workloads must use the default value (0644) or omit.\nIf included, a workload configMap must have an exactly matching DefaultMode value.",
+                    "format": "int32",
+                    "type": "integer"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "type": "object",
+                "additionalProperties": false
+              },
               "gcePersistentDisk": {
-                "description": "gcePersistentDisk represents a GCE Disk resource that is attached to a\nkubelet's host machine and then exposed to the pod.\nMore info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk",
+                "description": "GCEPersistentDiskVolumeSource is functionally a subset of core/v1\nGCEPersistentDiskVolumeSource, preserving only fields used for allowlisting.",
                 "properties": {
                   "fsType": {
-                    "description": "fsType is filesystem type of the volume that you want to mount.\nTip: Ensure that the filesystem type is supported by the host operating system.\nExamples: \"ext4\", \"xfs\", \"ntfs\". Implicitly inferred to be \"ext4\" if unspecified.\nMore info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk\nTODO: how do we prevent errors in the filesystem from compromising the machine",
+                    "description": "fsType is filesystem type of the volume that you want to mount.\nMust be exact match to value present in the workload's volume",
                     "type": "string"
                   },
                   "partition": {
-                    "description": "partition is the partition in the volume that you want to mount.\nIf omitted, the default is to mount by volume name.\nExamples: For volume /dev/sda1, you specify the partition as \"1\".\nSimilarly, the volume partition for /dev/sda is \"0\" (or you can leave the property empty).\nMore info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk",
+                    "description": "partition is the partition in the volume that you want to mount.\nMust be exact match to value present in the workload's volume",
                     "format": "int32",
                     "type": "integer"
                   },
                   "readOnly": {
-                    "description": "readOnly here will force the ReadOnly setting in VolumeMounts.\nDefaults to false.\nMore info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk",
+                    "description": "readOnly here will force the ReadOnly setting in VolumeMounts.\nDefaults to false.\nThe allowlist must have this field omitted or explicitly set to false if the workload does not have readOnly set to true.\nValue is ignored if workload has this set to true",
                     "type": "boolean"
                   }
                 },
@@ -631,10 +734,10 @@
                 "additionalProperties": false
               },
               "hostPath": {
-                "description": "hostPath represents a pre-existing file or directory on the host\nmachine that is directly exposed to the container. This is generally\nused for system agents or other privileged things that are allowed\nto see the host machine. Most containers will NOT need this.\nMore info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath",
+                "description": "HostPathVolumeSource is functionally a subset of core/v1\nHostPathVolumeSource, preserving only fields used for allowlisting.",
                 "properties": {
                   "path": {
-                    "description": "path of the directory on the host.\nIf the path is a symlink, it will follow the link to the real path.\nMore info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath",
+                    "description": "path of the directory on the host.\nMust be exact match to value present in the workload's volume",
                     "type": "string"
                   }
                 },
@@ -645,18 +748,18 @@
                 "additionalProperties": false
               },
               "name": {
-                "description": "name of the volume.\nMust be a DNS_LABEL and unique within the pod.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                "description": "name of the volume.\nMust match name of volume present in the workload",
                 "type": "string"
               },
               "nfs": {
-                "description": "nfs represents an NFS mount on the host that shares a pod's lifetime\nMore info: https://kubernetes.io/docs/concepts/storage/volumes#nfs",
+                "description": "NFSVolumeSource is functionally a subset of core/v1 NFSVolumeSource,\npreserving only fields used for allowlisting.",
                 "properties": {
                   "path": {
-                    "description": "path that is exported by the NFS server.\nMore info: https://kubernetes.io/docs/concepts/storage/volumes#nfs",
+                    "description": "path that is exported by the NFS server.\nMust be exact match to value present in the workload's volume",
                     "type": "string"
                   },
                   "readOnly": {
-                    "description": "readOnly here will force the NFS export to be mounted with read-only permissions.\nDefaults to false.\nMore info: https://kubernetes.io/docs/concepts/storage/volumes#nfs",
+                    "description": "readOnly here will force the NFS export to be mounted with read-only permissions.\nDefaults to false.\nThe allowlist must have this field omitted or explicitly set to false if the workload does not have readOnly set to true.\nValue is ignored if workload has this set to true",
                     "type": "boolean"
                   }
                 },
@@ -667,10 +770,10 @@
                 "additionalProperties": false
               },
               "persistentVolumeClaim": {
-                "description": "persistentVolumeClaimVolumeSource represents a reference to a\nPersistentVolumeClaim in the same namespace.\nMore info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims",
+                "description": "PersistentVolumeClaimVolumeSource is functionally a subset of\ncore/v1 PersistentVolumeClaimVolumeSource, preserving only fields\nused for allowlisting.",
                 "properties": {
                   "readOnly": {
-                    "description": "readOnly Will force the ReadOnly setting in VolumeMounts.\nDefault false.",
+                    "description": "readOnly Will force the ReadOnly setting in VolumeMounts.\nDefault false.\nThe allowlist must have this field omitted or explicitly set to false if the workload does not have readOnly set to true.\nValue is ignored if workload has this set to true",
                     "type": "boolean"
                   }
                 },
@@ -697,6 +800,7 @@
       "type": "object"
     },
     "minGKEVersion": {
+      "description": "Minimum GKE Version that this workload allowlist qualifies for.\nShould be set if the workload needing to be allowlisted requires fields\nintroduced in a particular GKE version",
       "type": "string"
     }
   },
