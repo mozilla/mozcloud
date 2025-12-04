@@ -38,8 +38,8 @@ go install github.com/mozilla/mozcloud/tools/render-diff@latest
 Run this tool from within your Git repository. For Helm charts, values.yaml is automatically included.
 
 
-#### Checking a Helm Chart diff against another target ref
-* ```render-diff --path ./examples/helm/helloWorld --values values-dev.yaml --ref development```
+#### Checking a Helm Chart diff against another target ref and piping to less
+* ```render-diff --path ./examples/helm/helloWorld --values values-dev.yaml --ref development | less -R```
 #### Checking Kustomize diff against the default (`main`) branch
 * ```render-diff -p ./examples/kustomize/helloWorld```
 #### Checking Kustomize diff against a tag
