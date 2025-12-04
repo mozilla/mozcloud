@@ -3,6 +3,7 @@ module github.com/mozilla/mozcloud/tools/render-diff
 go 1.24.0
 
 require (
+	github.com/gonvenience/bunt v1.4.2
 	github.com/gonvenience/ytbx v1.4.7
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/homeport/dyff v1.10.2
@@ -41,7 +42,6 @@ require (
 	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/gonvenience/bunt v1.4.2 // indirect
 	github.com/gonvenience/idem v0.0.2 // indirect
 	github.com/gonvenience/neat v1.3.16 // indirect
 	github.com/gonvenience/term v1.0.4 // indirect
