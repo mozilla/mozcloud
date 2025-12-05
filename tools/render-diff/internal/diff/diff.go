@@ -175,3 +175,76 @@ func createInputFileFromString(content string, location string) (ytbx.InputFile,
 		Documents: docs,
 	}, nil
 }
+
+// PrintChangeSummary prints a concise summary of changes categorized by type
+func PrintChangeSummary(report dyff.Report) error {
+	// Track document changes by type
+	added := make(map[int]bool)
+	removed := make(map[int]bool)
+	modified := make(map[int]bool)
+
+	// Categorize each document based on the nature of its diffs
+	for _, diff := range report.Diffs {
+		docIdx := diff.Path.DocumentIdx
+
+		// Check if this is a document-level change (root path with no/few elements)
+		isDocumentLevel := len(diff.Path.PathElements) == 0
+
+		// Categorize based on detail kinds
+		for _, detail := range diff.Details {
+			switch detail.Kind {
+			case dyff.ADDITION:
+				if isDocumentLevel || detail.From == nil {
+					added[docIdx] = true
+				} else {
+					modified[docIdx] = true
+				}
+			case dyff.REMOVAL:
+				if isDocumentLevel || detail.To == nil {
+					removed[docIdx] = true
+				} else {
+					modified[docIdx] = true
+				}
+			case dyff.MODIFICATION, dyff.ORDERCHANGE:
+				modified[docIdx] = true
+			}
+		}
+	}
+
+	// Remove documents from added/removed if they also appear in modified
+	// (they were modified, not wholly added/removed)
+	for docIdx := range modified {
+		delete(added, docIdx)
+		delete(removed, docIdx)
+	}
+
+	addedCount := len(added)
+	removedCount := len(removed)
+	modifiedCount := len(modified)
+	totalObjects := addedCount + removedCount + modifiedCount
+
+	// Build summary message
+	var parts []string
+	if modifiedCount > 0 {
+		parts = append(parts, fmt.Sprintf("%d updated", modifiedCount))
+	}
+	if addedCount > 0 {
+		parts = append(parts, fmt.Sprintf("%d added", addedCount))
+	}
+	if removedCount > 0 {
+		parts = append(parts, fmt.Sprintf("%d removed", removedCount))
+	}
+
+	if len(parts) == 0 {
+		return nil
+	}
+
+	changeStr := "change"
+	if totalObjects != 1 {
+		changeStr = "changes"
+	}
+
+	fmt.Printf("\nSummary: %d %s (%s)\n",
+		totalObjects, changeStr, strings.Join(parts, ", "))
+	return nil
+}
