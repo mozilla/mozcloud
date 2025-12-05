@@ -29,7 +29,7 @@ var (
 	updateFlag       bool
 	debugFlag        bool
 	semanticDiffFlag bool
-	plainFlag        bool
+	noColorFlag      bool
 
 	repoRoot string
 	fullRef  string
@@ -168,7 +168,7 @@ It renders your local Helm chart or Kustomize overlay to compare the resulting m
 
 		if semanticDiffFlag {
 			// We are using a more complex diff engine (dyff) which is better suited for k8s manifest comparison
-			renderedDiff, err := diff.CreateSemanticDiff(targetRender, localRender, fmt.Sprintf("%s/%s", fullRef, relativePath), fmt.Sprintf("local/%s", relativePath), plainFlag)
+			renderedDiff, err := diff.CreateSemanticDiff(targetRender, localRender, fmt.Sprintf("%s/%s", fullRef, relativePath), fmt.Sprintf("local/%s", relativePath), noColorFlag)
 			if err != nil {
 				return fmt.Errorf("error creating dyff: %w", err)
 			}
@@ -182,6 +182,11 @@ It renders your local Helm chart or Kustomize overlay to compare the resulting m
 				if err != nil {
 					return err
 				}
+				// Print summary of changed objects
+				err = diff.PrintChangeSummary(renderedDiff.Report)
+				if err != nil {
+					return fmt.Errorf("error printing summary: %w", err)
+				}
 			}
 		} else {
 			// Generate and Print our simple diff
@@ -192,7 +197,7 @@ It renders your local Helm chart or Kustomize overlay to compare the resulting m
 				fmt.Println("\nNo differences found between rendered manifests.")
 			} else {
 				fmt.Printf("\n--- Diff (%s vs. local) ---\n", fullRef)
-				fmt.Println(diff.ColorizeDiff(renderedDiff, plainFlag))
+				fmt.Println(diff.ColorizeDiff(renderedDiff, noColorFlag))
 
 			}
 		}
@@ -222,7 +227,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&releaseNameFlag, "release-name", "", "", "Helm release name to use when rendering templates. Defaults to chart name")
 	rootCmd.PersistentFlags().BoolVarP(&updateFlag, "update", "u", false, "Update helm chart dependencies. Required if lockfile does not match dependencies")
 	rootCmd.PersistentFlags().BoolVarP(&semanticDiffFlag, "semantic", "s", false, "Enable semantic diffing of k8s manifests (using dyff)")
-	rootCmd.PersistentFlags().BoolVarP(&plainFlag, "plain", "", false, "Output in plain style without any highlighting")
+	rootCmd.PersistentFlags().BoolVarP(&noColorFlag, "no-color", "", false, "Output in plain style without any highlighting")
 	rootCmd.PersistentFlags().BoolVarP(&debugFlag, "debug", "d", false, "Enable verbose logging for debugging")
 
 	rootCmd.Flags().SortFlags = false

@@ -28,7 +28,7 @@ go install github.com/mozilla/mozcloud/tools/render-diff@latest
 | `--release-name` | | "Helm release name to use when rendering templates. Defaults to chart name" | `""` |
 | `--update` | `-u` | Update helm chart dependencies. Required if lockfile does not match dependencies | `false` |
 | `--semantic` | `-s` |  Enable semantic diffing of k8s manifests (using dyff) | `false` |
-| `--plain` | | Output in plain style without any highlighting | |
+| `--no-color` | | Output in plain style without any highlighting | `false` |
 | `--debug` | `-d` | Enable verbose logging for debugging | `false` |
 | `--version` | | Prints the application version. | |
 | `--help` | `-h` | Show help information. | |
