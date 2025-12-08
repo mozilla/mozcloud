@@ -175,3 +175,147 @@ func createInputFileFromString(content string, location string) (ytbx.InputFile,
 		Documents: docs,
 	}, nil
 }
+
+// getDocumentName extracts the name from a Diff path
+// It uses the RootDescription which contains the K8s resource identifier
+func getDocumentNameFromDiff(diff dyff.Diff) string {
+	// The Path.RootDescription() contains the K8s resource identifier
+	// Example: "apps/v1/Deployment/helloworld"
+	desc := diff.Path.RootDescription()
+
+	if desc != "" {
+		// Remove parentheses if present: "(apps/v1/Deployment/helloworld)" -> "apps/v1/Deployment/helloworld"
+		return strings.Trim(desc, "()")
+	}
+
+	return "unknown"
+}
+
+// sortedMapValues returns the values from a map[int]string sorted by key
+func sortedMapValues(m map[int]string) []string {
+	// Get keys and sort them
+	keys := make([]int, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+
+	// Simple insertion sort since we expect small numbers of documents
+	for i := 1; i < len(keys); i++ {
+		key := keys[i]
+		j := i - 1
+		for j >= 0 && keys[j] > key {
+			keys[j+1] = keys[j]
+			j--
+		}
+		keys[j+1] = key
+	}
+
+	// Build result array
+	result := make([]string, len(keys))
+	for i, k := range keys {
+		result[i] = m[k]
+	}
+	return result
+}
+
+// PrintChangeSummary prints a concise summary of changes categorized by type
+func PrintChangeSummary(report dyff.Report) error {
+	// Track document changes by type with their identifiers
+	added := make(map[int]string)
+	removed := make(map[int]string)
+	modified := make(map[int]string)
+
+	// Categorize each document based on the nature of its diffs
+	for _, diff := range report.Diffs {
+		docIdx := diff.Path.DocumentIdx
+		docName := getDocumentNameFromDiff(diff)
+
+		// Check if this is a document-level change (root path with no/few elements)
+		isDocumentLevel := len(diff.Path.PathElements) == 0
+
+		// Categorize based on detail kinds
+		for _, detail := range diff.Details {
+			switch detail.Kind {
+			case dyff.ADDITION:
+				if isDocumentLevel || detail.From == nil {
+					// Document was added
+					added[docIdx] = docName
+				} else {
+					// Field was added to existing document
+					modified[docIdx] = docName
+				}
+			case dyff.REMOVAL:
+				if isDocumentLevel || detail.To == nil {
+					// Document was removed
+					removed[docIdx] = docName
+				} else {
+					// Field was removed from existing document
+					modified[docIdx] = docName
+				}
+			case dyff.MODIFICATION, dyff.ORDERCHANGE:
+				// Document was modified
+				modified[docIdx] = docName
+			}
+		}
+	}
+
+	// Remove documents from added/removed if they also appear in modified
+	// (they were modified, not wholly added/removed)
+	for docIdx := range modified {
+		delete(added, docIdx)
+		delete(removed, docIdx)
+	}
+
+	addedCount := len(added)
+	removedCount := len(removed)
+	modifiedCount := len(modified)
+	totalObjects := addedCount + removedCount + modifiedCount
+
+	// Build summary message
+	var parts []string
+	if modifiedCount > 0 {
+		parts = append(parts, fmt.Sprintf("%d updated", modifiedCount))
+	}
+	if addedCount > 0 {
+		parts = append(parts, fmt.Sprintf("%d added", addedCount))
+	}
+	if removedCount > 0 {
+		parts = append(parts, fmt.Sprintf("%d removed", removedCount))
+	}
+
+	if len(parts) == 0 {
+		return nil
+	}
+
+	changeStr := "change"
+	if totalObjects != 1 {
+		changeStr = "changes"
+	}
+
+	fmt.Printf("\nSummary: %d %s (%s)\n",
+		totalObjects, changeStr, strings.Join(parts, ", "))
+
+	// Print detailed lists for each category
+	if len(modified) > 0 {
+		fmt.Println("\nUpdated:")
+		for _, id := range sortedMapValues(modified) {
+			fmt.Printf("  - %s\n", id)
+		}
+	}
+
+	if len(added) > 0 {
+		fmt.Println("\nAdded:")
+		for _, id := range sortedMapValues(added) {
+			fmt.Printf("  - %s\n", id)
+		}
+	}
+
+	if len(removed) > 0 {
+		fmt.Println("\nRemoved:")
+		for _, id := range sortedMapValues(removed) {
+			fmt.Printf("  - %s\n", id)
+		}
+	}
+
+	return nil
+}
