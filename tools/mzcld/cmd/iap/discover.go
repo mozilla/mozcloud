@@ -9,9 +9,9 @@ import (
 	"time"
 )
 
-// discoverIAPClientID attempts to discover the IAP OAuth Client ID for a given hostname
+// DiscoverClientID attempts to discover the IAP OAuth Client ID for a given hostname
 // by making an unauthenticated request and inspecting the IAP redirect
-func discoverIAPClientID(ctx context.Context, hostname string) (string, error) {
+func DiscoverClientID(ctx context.Context, hostname string) (string, error) {
 	// Ensure hostname doesn't have protocol
 	hostname = strings.TrimPrefix(hostname, "https://")
 	hostname = strings.TrimPrefix(hostname, "http://")

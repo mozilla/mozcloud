@@ -5,11 +5,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
+	"google.golang.org/api/impersonate"
 )
 
 func NewIAPCmd() *cobra.Command {
@@ -66,7 +66,7 @@ Examples:
 				}
 			}
 
-			clientID, err := discoverIAPClientID(ctx, host)
+			clientID, err := DiscoverClientID(ctx, host)
 			if err != nil {
 				return fmt.Errorf("discover client ID from %s: %w", host, err)
 			}
@@ -79,7 +79,7 @@ Examples:
 
 			// Determine service account to impersonate
 			if serviceAccount == "" {
-				serviceAccount = getDefaultServiceAccount(host)
+				serviceAccount = GetDefaultServiceAccount(host)
 			}
 
 			if verbose {
@@ -89,7 +89,7 @@ Examples:
 			}
 
 			// Generate token via service account impersonation
-			token, err := generateIAPTokenWithImpersonation(ctx, clientID, serviceAccount)
+			token, err := GenerateToken(ctx, clientID, serviceAccount)
 			if err != nil {
 				return fmt.Errorf("generate IAP token: %w", err)
 			}
@@ -153,8 +153,9 @@ Examples:
 	return cmd
 }
 
-// getDefaultServiceAccount returns the default service account for a given host
-func getDefaultServiceAccount(host string) string {
+// GetDefaultServiceAccount returns the default service account for a given host
+// Should we create a mzcld-cli service account for platform IAP access
+func GetDefaultServiceAccount(host string) string {
 	// Map known hostnames to their service accounts
 	switch {
 	case strings.Contains(host, "sandbox"):
@@ -169,37 +170,34 @@ func getDefaultServiceAccount(host string) string {
 	}
 }
 
-// generateIAPTokenWithImpersonation generates an IAP token by impersonating a service account
-func generateIAPTokenWithImpersonation(ctx context.Context, clientID, serviceAccountEmail string) (string, error) {
-	// Check if gcloud is available
-	if _, err := exec.LookPath("gcloud"); err != nil {
-		return "", fmt.Errorf("gcloud CLI not found in PATH. Please install gcloud SDK")
-	}
-
-	// Use gcloud to generate an identity token while impersonating a service account
-	cmd := exec.CommandContext(ctx, "gcloud", "auth", "print-identity-token",
-		"--impersonate-service-account", serviceAccountEmail,
-		"--audiences", clientID,
-		"--include-email")
-
-	output, err := cmd.Output()
+// GenerateToken generates an IAP token by impersonating a service account
+func GenerateToken(ctx context.Context, clientID, serviceAccountEmail string) (string, error) {
+	// Create an impersonated ID token source
+	// This uses the user's Application Default Credentials to impersonate the service account
+	ts, err := impersonate.IDTokenSource(ctx, impersonate.IDTokenConfig{
+		Audience:        clientID,
+		TargetPrincipal: serviceAccountEmail,
+		IncludeEmail:    true,
+	})
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			stderr := string(exitErr.Stderr)
-			return "", fmt.Errorf("gcloud impersonation failed: %s\n\n"+
-				"Make sure:\n"+
-				"1. You're logged in: gcloud auth login\n"+
-				"2. You have roles/iam.serviceAccountTokenCreator on %s", stderr, serviceAccountEmail)
-		}
-		return "", fmt.Errorf("execute gcloud command: %w", err)
+		return "", fmt.Errorf("create impersonated token source: %w\n\n"+
+			"Make sure:\n"+
+			"1. You're authenticated: gcloud auth login or gcloud auth application-default login\n"+
+			"2. You have roles/iam.serviceAccountTokenCreator on %s", err, serviceAccountEmail)
 	}
 
-	token := strings.TrimSpace(string(output))
-	if token == "" {
-		return "", fmt.Errorf("gcloud returned empty token")
+	// Get the ID token
+	token, err := ts.Token()
+	if err != nil {
+		return "", fmt.Errorf("get impersonated token: %w", err)
 	}
 
-	return token, nil
+	// The AccessToken field actually contains the ID token
+	if token.AccessToken == "" {
+		return "", fmt.Errorf("received empty token")
+	}
+
+	return token.AccessToken, nil
 }
 
 // debugToken decodes and displays the JWT token claims for debugging
