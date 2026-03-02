@@ -31,7 +31,7 @@ Before installing this skill, ensure you have:
    ```
 4. **Access to Mozilla's OCI registry** to pull mozcloud charts
    ```bash
-   helm show chart oci://us-west1-docker.pkg.dev/moz-fx-platform-artifacts/mozcloud-charts/application --version <latest>
+   helm show chart oci://us-west1-docker.pkg.dev/moz-fx-platform-artifacts/mozcloud-charts/mozcloud --version <latest>
    ```
 
 ### Setup Instructions
