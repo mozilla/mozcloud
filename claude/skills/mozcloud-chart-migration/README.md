@@ -4,15 +4,21 @@ A Claude Code skill that assists with migrating custom tenant Helm charts to the
 
 ## Overview
 
-This skill automates and guides the process of migrating custom Helm charts to use Mozilla's shared `mozcloud` chart, which is stored in the OCI repository `oci://us-west1-docker.pkg.dev/moz-fx-platform-artifacts/mozcloud-charts`.
+This skill automates and guides the process of migrating custom Helm charts to use Mozilla's shared `mozcloud` chart, which is stored in the OCI repository `oci://us-west1-docker.pkg.dev/moz-fx-platform-artifacts/mozcloud-charts/mozcloud`.
+
+The migration follows an **ArgoCD-based deployment workflow**:
+- All charts are deployed via ArgoCD
+- Changes are isolated per environment using migration branches
+- Rollback is simple: delete the branch or push fixes
+- Once merged to main, changes deploy to the target environment
 
 The skill handles:
-- Multi-environment migrations (dev, stage, prod)
-- Resource name preservation
-- Semantic diff validation
-- Migration documentation and tracking
+- Multi-environment migrations (dev, stage, prod) with isolated branches
+- Resource name preservation (primary goal)
+- Semantic diff validation with render-diff
+- Comprehensive migration documentation and tracking
 - Template gating and values file conversion
-- Regional values file support
+- Regional values file support (multi-region deployments)
 
 ## Installation
 
@@ -110,12 +116,20 @@ The skill will:
 
 The skill follows this process:
 
-1. **Pre-flight Checks**: Verifies git status, required tools, and OCI registry access
-2. **Setup**: Creates migration branch and `.migration/` directory
-3. **Planning**: Analyzes current chart and creates detailed migration plan
-4. **Execution**: Converts values files, updates Chart.yaml, gates templates
-5. **Testing**: Runs render-diff and validates resource equivalence
-6. **Documentation**: Updates migration tracking files
+1. **Pre-flight Checks**: Verifies git status, Helm version (not v4), render-diff availability, and OCI registry access
+2. **Setup**: Creates environment-specific migration branch and `.migration/` directory structure
+3. **Planning**: Analyzes current chart, identifies values files, creates detailed migration plan for user review
+4. **Execution**:
+   - Converts values files to mozcloud schema format
+   - Updates Chart.yaml with mozcloud dependency
+   - Gates custom templates (preserves for non-migrated environments)
+   - **Preserves original resource names** (requires approval for any changes)
+5. **Testing**:
+   - Runs `render-diff` for semantic equivalence
+   - Validates resource count matches original
+   - Verifies non-migrated environments show no changes
+   - Creates detailed diff analysis
+6. **Documentation**: Updates migration tracking files (STATUS.md, CHANGES_$ENV.md, DIFF_ANALYSIS_$ENV.md)
 
 ### Key Features
 
@@ -147,10 +161,13 @@ Automatically handles multi-region deployments with files like `values-stage-eur
 
 The skill includes several safety mechanisms:
 
-- **No automatic commits**: All changes require user review
-- **No destructive commands**: Never runs `helm install`, `helm upgrade`, or `helm delete`
-- **Non-environment isolation**: Verifies other environments show no changes
-- **ArgoCD-aware**: Designed for ArgoCD deployment workflow with safe rollback
+- **No automatic commits**: All changes require user review before committing
+- **No destructive commands**: Never runs `helm install`, `helm upgrade`, `helm delete`, or other destructive operations
+- **Environment isolation**: Verifies non-migrated environments show no changes
+- **Scoped file writes**: Only writes to the chart being migrated and `.migration/` directory
+- **ArgoCD-aware**: Designed for ArgoCD deployment workflow with simple rollback (delete branch or push fixes)
+- **Resource name preservation**: Requires explicit approval for any resource name changes
+- **Semantic validation**: Uses `render-diff` to verify resource equivalence before suggesting commit
 
 ## Troubleshooting
 
@@ -166,8 +183,31 @@ gcloud auth configure-docker us-west1-docker.pkg.dev
 ### "Helm version 4 detected"
 Helm v4 has breaking changes. Please use Helm v3 for compatibility.
 
-### Resource count mismatch
-Check `.migration/DIFF_ANALYSIS_$ENV.md` for detailed resource comparison and verify mozcloud dependency is enabled.
+### render-diff shows missing resources
+- Check that mozcloud dependency is enabled in values for the migrated environment
+- Verify workload names match original deployment names exactly
+- Review template gating conditions to ensure custom templates are properly disabled
+
+### Chart.lock conflicts
+- Run `helm dependency update` after modifying Chart.yaml
+- Ensure OCI registry is accessible
+
+### Resource names changing unexpectedly
+- Verify mozcloud workload key matches full original deployment name
+- Check for `nameOverride` or `fullnameOverride` in values files
+- Review mozcloud chart's naming conventions in `values.schema.json`
+- The skill will ask for approval before implementing name changes
+
+### Non-migrated environments showing differences
+- Ensure template gating is working correctly (templates wrapped in conditional logic)
+- Verify mozcloud dependency is disabled for non-migrated environments
+- Run `render-diff -f values-<env>.yaml` for each non-migrated environment
+
+### Files created in wrong location
+This should be prevented by the Working Directory Management implementation. If encountered:
+- Check that `$CHART_DIR` variable is set correctly
+- Verify all file operations use absolute paths with `$CHART_DIR`
+- See Technical References section above
 
 ## Examples
 
@@ -192,11 +232,49 @@ cd charts/my-app
 # Skill reads .migration/README.md and continues where left off
 ```
 
+## Technical References
+
+Detailed implementation documentation is available in the `references/` directory:
+
+### [Working Directory Management](references/working-directory-management.md)
+**Critical for preventing files from being created in wrong locations.**
+
+The skill maintains a consistent working directory by:
+- Capturing `$CHART_DIR` at the start of migration
+- Using absolute paths for all file operations
+- Verifying location after helm operations (which may change directory context)
+- Safety checks before creating files
+
+### [Mozcloud Chart Reference](references/mozcloud-chart-reference.md)
+Complete documentation about the mozcloud chart:
+- **OCI Repository**: `oci://us-west1-docker.pkg.dev/moz-fx-platform-artifacts/mozcloud-charts/mozcloud`
+- Chart structure and schema details
+- Common migration patterns
+- Values file conventions
+- Troubleshooting chart-specific issues
+
+### [Migration Directory Structure](references/migration-directory-structure.md)
+Detailed breakdown of the `.migration/` directory:
+- Purpose of each file (README.md, STATUS.md, CHANGES_*.md, etc.)
+- Example content for each file type
+- Best practices for documentation
+- When and how to update files
+
+### [Troubleshooting Guide](references/troubleshooting.md)
+Comprehensive troubleshooting reference:
+- Render-diff issues
+- OCI registry authentication
+- Resource naming problems
+- Template gating issues
+- Helm version compatibility
+- And more...
+
 ## Additional Resources
 
 - **Mozcloud Chart Repository**: https://github.com/mozilla/helm-charts
 - **Render-diff Tool**: https://github.com/mozilla/mozcloud/tree/main/tools/render-diff
 - **Migration Documentation**: See `.migration/README.md` in any migrated chart for detailed progress and decisions
+- **Complete Skill Documentation**: See `SKILL.md` for full implementation details
 
 ## Support
 
