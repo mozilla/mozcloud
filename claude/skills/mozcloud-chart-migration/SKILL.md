@@ -77,7 +77,7 @@ Before starting the migration, verify the following:
    ```
 4. **OCI Registry Access**: Verify mozcloud chart is accessible from OCI registry:
    ```bash
-   helm show chart oci://us-west1-docker.pkg.dev/moz-fx-platform-artifacts/mozcloud-charts/application --version <latest>
+   helm show chart oci://us-west1-docker.pkg.dev/moz-fx-platform-artifacts/mozcloud-charts/mozcloud --version <latest>
    ```
 
 ## Working Directory Management
