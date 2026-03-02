@@ -236,6 +236,13 @@ cd charts/my-app
 
 Detailed implementation documentation is available in the `references/` directory:
 
+### [Tools and Permissions](references/tools-and-permissions.md)
+Lists tools that can be used without user prompts:
+- Read-only commands (pwd, ls, git status, etc.)
+- Helm commands (helm version, helm template, etc.)
+- Validation tools (render-diff, diff)
+- Prohibited commands that require approval
+
 ### [Working Directory Management](references/working-directory-management.md)
 **Critical for preventing files from being created in wrong locations.**
 

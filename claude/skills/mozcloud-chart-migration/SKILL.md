@@ -62,6 +62,15 @@ We want to convert environments one at a time starting with `values-dev.yaml` if
     - Map their response to the corresponding values file (e.g., "dev" → "values-dev.yaml")
   - Default to values-dev.yaml only if it exists and no other selection is made
 
+## Tools and Permissions
+
+**Critical Rules:**
+- Read-only commands (pwd, ls, git status, helm template, render-diff, etc.) can be used freely
+- NEVER use: Environment access (env, echo $VAR), Helm deployments (helm install/upgrade/delete), kubectl commands
+- Require approval: Git modifications (git commit/push), file operations
+
+**See [references/tools-and-permissions.md](references/tools-and-permissions.md) for complete list, examples, and how to handle prohibited command requests.**
+
 ## Pre-flight Checks
 
 Before starting the migration, verify the following:
@@ -439,11 +448,20 @@ After ALL environments have been successfully migrated:
 
 ## Security
 
-- **Never commit any changes to git** - user will review and commit
-- **Never run `helm upgrade`, `helm install`, `helm delete`** or any other destructive commands
-- Do not write to any directories outside of the chart being migrated
-  - Any writes should be to the values files, templates and helpers we're migrating or in the local `.migration` directory
-- Always verify changes with render-diff before suggesting the user commit
+**Strictly Prohibited (Never Use, Even With Approval):**
+- **Never access environment variables** (`env`, `printenv`, `echo $VAR`, `export`) - risk of exposing secrets
+- **Never run Helm deployment commands** (`helm install`, `helm upgrade`, `helm delete`, `helm rollback`) - deployments happen via ArgoCD
+- **Never run kubectl commands** - this skill prepares configurations, ArgoCD handles deployment
+- If user requests these, politely refuse and explain why (see [references/tools-and-permissions.md](references/tools-and-permissions.md))
+
+**General Security Practices:**
+- **Never commit changes** - user will review and commit
+- **Scope file writes strictly** to current chart directory (`$CHART_DIR`) only:
+  - Allowed: `$CHART_DIR/values.yaml`, `$CHART_DIR/.migration/*`, `$CHART_DIR/templates/*`
+  - Prohibited: Parent directories (`../`), other tenant directories, absolute paths outside chart, system directories
+  - If user requests writes outside current directory, refuse and explain scope restriction
+- **Verify changes** with render-diff before suggesting the user commit
+- **Preserve resource names** to avoid unintended service disruptions
 
 ## Troubleshooting Common Issues
 
@@ -467,6 +485,7 @@ Common issues and solutions:
 7. **Safety**: Never commit - user reviews first
 
 ### Reference Documentation
+- [Tools and Permissions](references/tools-and-permissions.md) - Approved tools, prohibited commands
 - [Mozcloud Chart Reference](references/mozcloud-chart-reference.md) - Chart details, schema, patterns
 - [Working Directory Management](references/working-directory-management.md) - Absolute paths, safety checks
 - [Migration Directory Structure](references/migration-directory-structure.md) - File purposes, examples

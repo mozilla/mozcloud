@@ -52,14 +52,14 @@ The `.migration` directory maintains all migration-related documentation and art
 **Started**: 2024-01-15
 
 ## Completed
-- ✅ Pre-flight checks passed
-- ✅ Migration plan created and approved
-- ✅ Values files converted to mozcloud format
-- ✅ Templates gated for dev environment
+- [x] Pre-flight checks passed
+- [x] Migration plan created and approved
+- [x] Values files converted to mozcloud format
+- [x] Templates gated for dev environment
 
 ## In Progress
-- 🔄 Testing with render-diff
-- 🔄 Reviewing diff analysis
+- [ ] Testing with render-diff
+- [ ] Reviewing diff analysis
 
 ## Next Steps
 1. Address any semantic differences found
@@ -254,10 +254,10 @@ None - all changes are intentional and expected.
 None detected by render-diff.
 
 ## Validation Results
-✅ Resource count: 5 original → 5 migrated
-✅ Resource names: All preserved
-✅ Non-migrated environments: No changes detected
-✅ render-diff: Semantic equivalence confirmed
+- Resource count: 5 original → 5 migrated
+- Resource names: All preserved
+- Non-migrated environments: No changes detected
+- render-diff: Semantic equivalence confirmed
 ```
 
 ## Best Practices

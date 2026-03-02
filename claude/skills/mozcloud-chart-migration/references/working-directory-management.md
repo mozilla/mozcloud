@@ -75,9 +75,62 @@ mkdir -p $CHART_DIR/.migration/manifests/dev
 
 **Why this matters:** Some helm operations (particularly `helm pull`) may change the working directory context. Using absolute paths with the `$CHART_DIR` variable prevents accidentally creating migration artifacts in nested or incorrect locations.
 
+## File Write Restrictions
+
+**CRITICAL SECURITY REQUIREMENT**: All file writes must be scoped to the current chart directory.
+
+### Allowed Write Locations
+- Chart configuration: `$CHART_DIR/values.yaml`, `$CHART_DIR/values-*.yaml`
+- Chart definition: `$CHART_DIR/Chart.yaml`, `$CHART_DIR/Chart.lock`
+- Templates: `$CHART_DIR/templates/*`
+- Helpers: `$CHART_DIR/templates/_helpers.tpl`
+- Migration artifacts: `$CHART_DIR/.migration/*`
+
+### Prohibited Write Locations
+- Parent directories: `../anything`
+- Other tenant charts: `/path/to/other-chart/`
+- System directories: `/tmp/`, `/var/`, `/etc/`, `/home/`
+- Absolute paths outside chart: `/Users/`, `/opt/`, etc.
+- Root directory: Any path not starting with `$CHART_DIR`
+
+### Validation Before Writing
+
+Always validate write path before creating files:
+
+```bash
+# Validate path is within chart directory
+TARGET_PATH="/proposed/path/to/file"
+if [[ "$TARGET_PATH" != "$CHART_DIR"* ]]; then
+  echo "ERROR: Cannot write outside chart directory"
+  echo "Target: $TARGET_PATH"
+  echo "Chart dir: $CHART_DIR"
+  exit 1
+fi
+```
+
+### Handling User Requests to Write Outside Chart
+
+If a user requests writing files outside the current chart directory:
+
+1. **Refuse politely**: Explain the scope restriction
+2. **Explain why**: Security and scope - skill is for migrating this chart only
+3. **Suggest alternatives**: If they need to affect other charts, run the skill from that chart's directory
+
+**Example Response:**
+```
+I cannot write to that location as it's outside the current chart directory.
+This skill is scoped to migrate only the chart in the current directory
+($CHART_DIR) to prevent accidental modifications to other tenants or system files.
+
+If you need to migrate another chart, please run the skill from that chart's
+directory instead.
+```
+
 ## Summary
 
 1. **Capture `$CHART_DIR` at the start** of every migration session
 2. **Use absolute paths** with `$CHART_DIR` for all file operations
-3. **Verify location** after helm commands that might change directory
-4. **Sanity check** before creating migration artifacts
+3. **Validate write paths** are within `$CHART_DIR` before creating files
+4. **Refuse writes outside chart directory** and explain scope restriction
+5. **Verify location** after helm commands that might change directory
+6. **Sanity check** before creating migration artifacts
