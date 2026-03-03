@@ -67,6 +67,9 @@ Mozcloud provides default nginx configuration. See [references/configuration-pat
 - This skill should be run while in the target chart directory.
   - If it is not, ask the user to change to the target chart directory and run again.
 - Ensure the current directory has a `Chart.yaml` file and prompt for confirmation that this is the intended chart to migrate.
+
+### Regular Migration (Environment-Specific)
+
 - List all available values files in the directory (values-*.yaml):
   - Use `ls values-*.yaml` to find all environment values files
   - Display them to the user with a clear list
@@ -75,6 +78,33 @@ Mozcloud provides default nginx configuration. See [references/configuration-pat
     - Present the list and ask them to select (e.g., "dev", "stage", "preview")
     - Map their response to the corresponding values file (e.g., "dev" → "values-dev.yaml")
   - Default to values-dev.yaml only if it exists and no other selection is made
+
+### Cleanup Mode
+
+If the user invokes with `cleanup` argument:
+```bash
+/mozcloud-chart-migration cleanup
+```
+
+**Prerequisites Check**:
+- Verify all environment migrations are merged to main (check git branch history)
+- Confirm Chart.yaml has mozcloud dependency with `condition: mozcloud.enabled`
+- Ask user to confirm environments are deployed and stable
+
+**Actions** (see [references/cleanup-phase.md](references/cleanup-phase.md) for detailed guide):
+1. Consolidate duplicate values from `values-{env}.yaml` into `values.yaml`
+2. Remove unused custom templates (those fully replaced by mozcloud)
+3. Simplify Chart.yaml (remove `condition: mozcloud.enabled`)
+4. Remove `mozcloud.enabled: true` from all values files
+5. Run `helm dependency update`
+6. Archive `.migration/` directory (move to `.migration-archive`)
+7. Validate all changes with render-diff for each environment (must show zero differences)
+8. Create cleanup branch for review
+
+**Important**:
+- Cleanup is optional and low-urgency
+- Functionality remains identical (validated by render-diff)
+- Makes future maintenance easier by reducing duplication
 
 ## Tools and Permissions
 
