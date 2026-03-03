@@ -42,23 +42,32 @@ Before installing this skill, ensure you have:
 
 ### Setup Instructions
 
-1. **Copy the skill to your project's Claude skills directory:**
+1. **Add the skill to your infra project's Claude skills directory:**
 
+   You can either copy or symlink the skill. Symlinking is recommended if you want the skill to automatically stay in sync with updates in the mozcloud repository.
+
+   **Option A: Symlink (Recommended)**
    ```bash
-   # From the sandbox-infra repository root
+   # From your infra repository root (e.g., sandbox-infra)
+   mkdir -p .claude/skills
+   ln -s /path/to/mozcloud/claude/skills/mozcloud-chart-migration .claude/skills/mozcloud-chart-migration
+   ```
+
+   **Option B: Copy**
+   ```bash
+   # From your infra repository root (e.g., sandbox-infra)
    mkdir -p .claude/skills
    cp -r /path/to/mozcloud/claude/skills/mozcloud-chart-migration .claude/skills/
    ```
 
-   Or if you're already in the mozcloud repository:
-
+   If you're already in the mozcloud repository and want to set up the symlink:
    ```bash
-   # Navigate to your sandbox-infra project
+   # Navigate to your infra project
    cd /path/to/sandbox-infra
 
-   # Copy the skill
+   # Create the symlink (adjust the path to mozcloud as needed)
    mkdir -p .claude/skills
-   cp -r /path/to/mozcloud/claude/skills/mozcloud-chart-migration .claude/skills/
+   ln -s ../mozcloud/claude/skills/mozcloud-chart-migration .claude/skills/mozcloud-chart-migration
    ```
 
 2. **Verify installation:**

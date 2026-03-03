@@ -48,6 +48,20 @@ We will have a shared `values.yaml` file and one for each environment: `values-d
   - If regional values files are found, we want to migrate both the `values-stage.yaml` on its own as well as with the regional values file.
 We want to convert environments one at a time starting with `values-dev.yaml` if it exists.
 
+**Important Context for Preview Environments:**
+
+Preview environments have different requirements than dev/stage. See [references/preview-environment-guide.md](references/preview-environment-guide.md) for complete details on:
+- Resource naming differences (preserve names in dev/stage, prefix with PR# in preview)
+- Preview-specific configuration patterns
+- Critical validation points
+
+**Important Context for Nginx Configuration:**
+
+Mozcloud provides default nginx configuration. See [references/configuration-patterns.md](references/configuration-patterns.md) for guidance on:
+- When to use mozcloud default nginx (recommended)
+- How to handle custom nginx configurations
+- Decision guide for static vs templated configs
+
 ## Determine Target Chart to Migrate
 
 - This skill should be run while in the target chart directory.
