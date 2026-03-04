@@ -178,6 +178,17 @@ The skill includes several safety mechanisms:
 - **Resource name preservation**: Requires explicit approval for any resource name changes
 - **Semantic validation**: Uses `render-diff` to verify resource equivalence before suggesting commit
 
+### Permission Requests
+
+**Important**: Claude Code will prompt you to approve certain operations during migration. Please carefully review these permission requests:
+
+- **What to expect**: The skill may request permission for file operations (reading/writing files), git commands (creating branches, checking status), and shell commands (running helm, render-diff, etc.)
+- **Review carefully**: Before approving, verify the operation makes sense for the current migration step
+- **Deny if unexpected**: If a request seems unusual or outside the scope of chart migration (e.g., accessing environment variables, running deployment commands), deny it and ask for clarification
+- **The skill will explain**: Each operation should be clearly described - if it's not clear what the skill is doing or why, ask before approving
+
+The skill is designed to work within the constraints of your permission settings and will explain what it's doing at each step.
+
 ## Troubleshooting
 
 ### "render-diff not found"
@@ -244,13 +255,6 @@ cd charts/my-app
 ## Technical References
 
 Detailed implementation documentation is available in the `references/` directory:
-
-### [Tools and Permissions](references/tools-and-permissions.md)
-Lists tools that can be used without user prompts:
-- Read-only commands (pwd, ls, git status, etc.)
-- Helm commands (helm version, helm template, etc.)
-- Validation tools (render-diff, diff)
-- Prohibited commands that require approval
 
 ### [Working Directory Management](references/working-directory-management.md)
 **Critical for preventing files from being created in wrong locations.**

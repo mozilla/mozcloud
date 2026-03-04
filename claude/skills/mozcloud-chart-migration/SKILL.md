@@ -106,15 +106,6 @@ If the user invokes with `cleanup` argument:
 - Functionality remains identical (validated by render-diff)
 - Makes future maintenance easier by reducing duplication
 
-## Tools and Permissions
-
-**Critical Rules:**
-- Read-only commands (pwd, ls, git status, helm template, render-diff, etc.) can be used freely
-- NEVER use: Environment access (env, echo $VAR), Helm deployments (helm install/upgrade/delete), kubectl commands
-- Require approval: Git modifications (git commit/push), file operations
-
-**See [references/tools-and-permissions.md](references/tools-and-permissions.md) for complete list, examples, and how to handle prohibited command requests.**
-
 ## Pre-flight Checks
 
 Before starting the migration, verify the following:
@@ -496,7 +487,7 @@ After ALL environments have been successfully migrated:
 - **Never access environment variables** (`env`, `printenv`, `echo $VAR`, `export`) - risk of exposing secrets
 - **Never run Helm deployment commands** (`helm install`, `helm upgrade`, `helm delete`, `helm rollback`) - deployments happen via ArgoCD
 - **Never run kubectl commands** - this skill prepares configurations, ArgoCD handles deployment
-- If user requests these, politely refuse and explain why (see [references/tools-and-permissions.md](references/tools-and-permissions.md))
+- If user requests these, politely refuse and explain why
 
 **General Security Practices:**
 - **Never commit changes** - user will review and commit
@@ -529,7 +520,6 @@ Common issues and solutions:
 7. **Safety**: Never commit - user reviews first
 
 ### Reference Documentation
-- [Tools and Permissions](references/tools-and-permissions.md) - Approved tools, prohibited commands
 - [Mozcloud Chart Reference](references/mozcloud-chart-reference.md) - Chart details, schema, patterns
 - [Working Directory Management](references/working-directory-management.md) - Absolute paths, safety checks
 - [Migration Directory Structure](references/migration-directory-structure.md) - File purposes, examples
