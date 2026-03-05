@@ -33,9 +33,11 @@ Our main goal is to end up with a chart that has no templates if possible. The v
 
 ## Mozcloud Chart Context
 
-- Download the latest version of the `mozcloud` chart from this OCI repository: `oci://us-west1-docker.pkg.dev/moz-fx-platform-artifacts/mozcloud-charts`
+- Download the latest version of the `mozcloud` chart from this OCI repository: `oci://us-west1-docker.pkg.dev/moz-fx-platform-artifacts/mozcloud-charts/mozcloud`
 - Use the most recent values.yaml and values.schema.json from the `mozcloud` chart when converting charts to the mozcloud format
 - The mozcloud chart follows a specific schema that must be adhered to for successful migration
+
+**See [references/mozcloud-chart-reference.md](references/mozcloud-chart-reference.md) for complete chart details, schema information, and migration patterns.**
 
 ## Custom Chart Context
 
@@ -46,11 +48,28 @@ We will have a shared `values.yaml` file and one for each environment: `values-d
   - If regional values files are found, we want to migrate both the `values-stage.yaml` on its own as well as with the regional values file.
 We want to convert environments one at a time starting with `values-dev.yaml` if it exists.
 
+**Important Context for Preview Environments:**
+
+Preview environments have different requirements than dev/stage. See [references/preview-environment-guide.md](references/preview-environment-guide.md) for complete details on:
+- Resource naming differences (preserve names in dev/stage, prefix with PR# in preview)
+- Preview-specific configuration patterns
+- Critical validation points
+
+**Important Context for Nginx Configuration:**
+
+Mozcloud provides default nginx configuration. See [references/configuration-patterns.md](references/configuration-patterns.md) for guidance on:
+- When to use mozcloud default nginx (recommended)
+- How to handle custom nginx configurations
+- Decision guide for static vs templated configs
+
 ## Determine Target Chart to Migrate
 
 - This skill should be run while in the target chart directory.
   - If it is not, ask the user to change to the target chart directory and run again.
 - Ensure the current directory has a `Chart.yaml` file and prompt for confirmation that this is the intended chart to migrate.
+
+### Regular Migration (Environment-Specific)
+
 - List all available values files in the directory (values-*.yaml):
   - Use `ls values-*.yaml` to find all environment values files
   - Display them to the user with a clear list
@@ -59,6 +78,33 @@ We want to convert environments one at a time starting with `values-dev.yaml` if
     - Present the list and ask them to select (e.g., "dev", "stage", "preview")
     - Map their response to the corresponding values file (e.g., "dev" → "values-dev.yaml")
   - Default to values-dev.yaml only if it exists and no other selection is made
+
+### Cleanup Mode
+
+If the user invokes with `cleanup` argument:
+```bash
+/mozcloud-chart-migration cleanup
+```
+
+**Prerequisites Check**:
+- Verify all environment migrations are merged to main (check git branch history)
+- Confirm Chart.yaml has mozcloud dependency with `condition: mozcloud.enabled`
+- Ask user to confirm environments are deployed and stable
+
+**Actions** (see [references/cleanup-phase.md](references/cleanup-phase.md) for detailed guide):
+1. Consolidate duplicate values from `values-{env}.yaml` into `values.yaml`
+2. Remove unused custom templates (those fully replaced by mozcloud)
+3. Simplify Chart.yaml (remove `condition: mozcloud.enabled`)
+4. Remove `mozcloud.enabled: true` from all values files
+5. Run `helm dependency update`
+6. Archive `.migration/` directory (move to `.migration-archive`)
+7. Validate all changes with render-diff for each environment (must show zero differences)
+8. Create cleanup branch for review
+
+**Important**:
+- Cleanup is optional and low-urgency
+- Functionality remains identical (validated by render-diff)
+- Makes future maintenance easier by reducing duplication
 
 ## Pre-flight Checks
 
@@ -78,31 +124,91 @@ Before starting the migration, verify the following:
    helm show chart oci://us-west1-docker.pkg.dev/moz-fx-platform-artifacts/mozcloud-charts/mozcloud --version <latest>
    ```
 
+## Working Directory Management
+
+**CRITICAL**: Always use absolute paths with `$CHART_DIR` variable to prevent files from being created in wrong locations.
+
+Quick reference:
+```bash
+# Capture chart root at start
+CHART_DIR=$(pwd)
+
+# Always use absolute paths
+mkdir -p $CHART_DIR/.migration/manifests/dev
+helm template . -f $CHART_DIR/values.yaml > $CHART_DIR/.migration/manifests/dev/original.yaml
+
+# Return to chart root after helm operations
+cd $CHART_DIR && pwd
+```
+
+**See [references/working-directory-management.md](references/working-directory-management.md) for complete guidance on directory management, safety checks, and why this matters.**
+
 ## Setup
 
-- Using `git` create a new branch called `claude-migration-$CHART_NAME-$ENV` where `$CHART_NAME` and `$ENV` match the target chart and environment values file.
-  - Example: `claude-migration-cicd-demos-dev`
-  - For uniqueness, you may append a date if needed: `claude-migration-$CHART_NAME-$ENV-$(date +%Y%m%d)`
-- Create a `.migration` directory inside the chart that we are migrating if it does not already exist.
-  - Store any temporary files, migration documentation, and related files in this directory for easy cleanup after the migration is complete.
+**Step 1: Capture chart root directory:**
+
+```bash
+CHART_DIR=$(pwd)
+echo "Chart root: $CHART_DIR"
+
+# Verify we're in a chart directory
+if [ ! -f "$CHART_DIR/Chart.yaml" ]; then
+  echo "ERROR: Chart.yaml not found. Not in a chart directory."
+  exit 1
+fi
+```
+
+**Step 2: Create migration branch:**
+
+Using `git` create a new branch called `claude-migration-$CHART_NAME-$ENV` where `$CHART_NAME` and `$ENV` match the target chart and environment values file.
+- Example: `claude-migration-cicd-demos-dev`
+- For uniqueness, you may append a date if needed: `claude-migration-$CHART_NAME-$ENV-$(date +%Y%m%d)`
+
+**Step 3: Create migration directory structure:**
+
+```bash
+# Use absolute path with $CHART_DIR variable
+mkdir -p $CHART_DIR/.migration/manifests/{dev,stage,prod}
+
+# Verify directory was created in correct location
+ls -la $CHART_DIR/.migration/
+```
+
+**Step 4: Download mozcloud reference chart:**
+
+```bash
+# Download to .migration directory using absolute path
+helm pull oci://us-west1-docker.pkg.dev/moz-fx-platform-artifacts/mozcloud-charts/mozcloud \
+  --version <latest> \
+  --untar \
+  --untardir $CHART_DIR/.migration/
+
+# IMPORTANT: Return to chart root (helm operations may change directory)
+cd $CHART_DIR
+pwd  # Verify location
+
+# Verify mozcloud chart was downloaded correctly
+ls -la $CHART_DIR/.migration/mozcloud/
+```
+
+Store any temporary files, migration documentation, and related files in the `.migration` directory for easy cleanup after the migration is complete.
 
 ## Migration Directory Structure
 
-The `.migration` directory will maintain all migration-related documentation and artifacts:
+The `.migration` directory maintains all migration-related documentation and artifacts:
 
 ```
 .migration/
-├── README.md                    # Current status, next steps, decisions (ENTRY POINT)
+├── README.md                    # ENTRY POINT - current status, next steps
 ├── STATUS.md                    # Multi-environment progress tracker
-├── SUMMARY.md                   # High-level migration overview (optional)
-├── MIGRATION_PLAN_$ENV.md       # Detailed plan for each environment
-├── CHANGES_$ENV.md              # Resource name changes per environment
-├── DIFF_ANALYSIS_$ENV.md        # Structured diff analysis per environment
-└── manifests/                   # Original rendered manifests for comparison
-    ├── dev/
-    ├── stage/
-    └── prod/
+├── MIGRATION_PLAN_$ENV.md       # Detailed plan per environment
+├── CHANGES_$ENV.md              # Change log per environment
+├── DIFF_ANALYSIS_$ENV.md        # Diff analysis per environment
+├── mozcloud/                    # Downloaded mozcloud chart reference
+└── manifests/$ENV/              # Original & migrated manifests
 ```
+
+**See [references/migration-directory-structure.md](references/migration-directory-structure.md) for complete details, file purposes, and examples.**
 
 ## Resuming a Migration
 
@@ -171,7 +277,18 @@ When continuing work on an existing migration:
    - Render the helm chart with the current values files using `helm template`
    - Store the rendered manifests in `.migration/manifests/$ENV/` directory
    ```bash
-   helm template . -f values.yaml -f values-$ENV.yaml > .migration/manifests/$ENV/original.yaml
+   # Ensure we have the chart root path
+   CHART_DIR=$(pwd)
+
+   # Render using absolute paths
+   helm template . \
+     -f $CHART_DIR/values.yaml \
+     -f $CHART_DIR/values-$ENV.yaml \
+     > $CHART_DIR/.migration/manifests/$ENV/original.yaml
+
+   # Verify file was created in correct location
+   ls -lh $CHART_DIR/.migration/manifests/$ENV/original.yaml
+   wc -l $CHART_DIR/.migration/manifests/$ENV/original.yaml
    ```
 
 4. **Create initial diff analysis template:**
@@ -288,7 +405,14 @@ After completing the migration, perform these validation steps in order:
    - Document any semantic differences in `.migration/CHANGES_$ENV.md`
 
 2. **Enhanced Diff Analysis**:
-   - Render the new chart: `helm template . -f values.yaml -f values-$ENV.yaml > .migration/manifests/$ENV/migrated.yaml`
+   - Render the new chart using absolute paths:
+   ```bash
+   CHART_DIR=$(pwd)
+   helm template . \
+     -f $CHART_DIR/values.yaml \
+     -f $CHART_DIR/values-$ENV.yaml \
+     > $CHART_DIR/.migration/manifests/$ENV/migrated.yaml
+   ```
    - Perform detailed comparison and populate `.migration/DIFF_ANALYSIS_$ENV.md`:
    ```markdown
    ## Resource Impact Summary
@@ -320,7 +444,12 @@ After completing the migration, perform these validation steps in order:
    - These should show zero differences
 
 4. **Visual Manifest Comparison**:
-   - Compare with original: `diff .migration/manifests/$ENV/original.yaml .migration/manifests/$ENV/migrated.yaml`
+   - Compare with original using absolute paths:
+   ```bash
+   CHART_DIR=$(pwd)
+   diff $CHART_DIR/.migration/manifests/$ENV/original.yaml \
+        $CHART_DIR/.migration/manifests/$ENV/migrated.yaml
+   ```
    - Review any differences and ensure they are intentional
 
 5. **Regional Values Files** (if applicable):
@@ -354,40 +483,44 @@ After ALL environments have been successfully migrated:
 
 ## Security
 
-- **Never commit any changes to git** - user will review and commit
-- **Never run `helm upgrade`, `helm install`, `helm delete`** or any other destructive commands
-- Do not write to any directories outside of the chart being migrated
-  - Any writes should be to the values files, templates and helpers we're migrating or in the local `.migration` directory
-- Always verify changes with render-diff before suggesting the user commit
+**Strictly Prohibited (Never Use, Even With Approval):**
+- **Never access environment variables** (`env`, `printenv`, `echo $VAR`, `export`) - risk of exposing secrets
+- **Never run Helm deployment commands** (`helm install`, `helm upgrade`, `helm delete`, `helm rollback`) - deployments happen via ArgoCD
+- **Never run kubectl commands** - this skill prepares configurations, ArgoCD handles deployment
+- If user requests these, politely refuse and explain why
+
+**General Security Practices:**
+- **Never commit changes** - user will review and commit
+- **Scope file writes strictly** to current chart directory (`$CHART_DIR`) only:
+  - Allowed: `$CHART_DIR/values.yaml`, `$CHART_DIR/.migration/*`, `$CHART_DIR/templates/*`
+  - Prohibited: Parent directories (`../`), other tenant directories, absolute paths outside chart, system directories
+  - If user requests writes outside current directory, refuse and explain scope restriction
+- **Verify changes** with render-diff before suggesting the user commit
+- **Preserve resource names** to avoid unintended service disruptions
 
 ## Troubleshooting Common Issues
 
-### Render-diff shows missing resources
-- Check that mozcloud dependency is enabled in values
-- Verify workload names match original deployment names
-- Review template gating conditions
+Common issues and solutions:
+- **Render-diff shows missing resources**: Check mozcloud dependency enabled, verify workload names match original
+- **Chart.lock conflicts**: Run `helm dependency update` after modifying Chart.yaml
+- **Resource names changing**: Verify workload key matches full original deployment name
+- **Non-migrated environments showing differences**: Check template gating and mozcloud.enabled flag
 
-### Chart.lock conflicts
-- Run `helm dependency update` after modifying Chart.yaml
-- Ensure helm-charts repository is accessible
-
-### Resource names changing unexpectedly
-- Verify mozcloud workload key matches full original name
-- Check for nameOverride or fullnameOverride in values
-- Review mozcloud chart's naming conventions in values.schema.json
-
-### Non-migrated environments showing differences
-- Ensure template gating is working correctly
-- Verify conditional logic in templates
-- Check that mozcloud dependency is disabled for those environments
+**See [references/troubleshooting.md](references/troubleshooting.md) for complete troubleshooting guide with detailed solutions.**
 
 ## Summary
 
-1. Always read `.migration/README.md` first - it is the entry point
-2. Use `.migration` directory for all migration artifacts
-3. Preserve resource names as PRIMARY goal
-4. Test thoroughly with `render-diff`
-   - Use `helm template` to compare manifests if `render-diff` fails or is unavailable
-5. Document all decisions and changes
-6. Never commit - user reviews first
-7. Update README.md at milestones for clear handoff
+### Critical Principles
+1. **Working Directory Management**: Always use `$CHART_DIR` variable with absolute paths (see [references/working-directory-management.md](references/working-directory-management.md))
+2. **Entry Point**: Always read `.migration/README.md` first when resuming work
+3. **Resource Names**: Preserve original names as PRIMARY goal - require approval for any changes
+4. **Environment Isolation**: Migrate one environment at a time, verify others show no changes
+5. **Validation**: Test thoroughly with `render-diff` before suggesting commit
+6. **Documentation**: Update migration docs at each milestone for clear handoff
+7. **Safety**: Never commit - user reviews first
+
+### Reference Documentation
+- [Mozcloud Chart Reference](references/mozcloud-chart-reference.md) - Chart details, schema, patterns
+- [Working Directory Management](references/working-directory-management.md) - Absolute paths, safety checks
+- [Migration Directory Structure](references/migration-directory-structure.md) - File purposes, examples
+- [Troubleshooting](references/troubleshooting.md) - Common issues and solutions
