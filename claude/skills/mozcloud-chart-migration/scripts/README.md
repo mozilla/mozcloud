@@ -1,8 +1,17 @@
 # Migration Helper Scripts
 
-This directory contains helper scripts that automate common operations during mozcloud chart migrations. These scripts are designed to be both:
-- **Executed directly** by the skill (reducing token usage and improving reliability)
-- **Run manually** by users for ad-hoc operations
+This directory contains helper scripts that automate common operations during mozcloud chart migrations.
+
+## IMPORTANT: The Skill Never Commits
+
+**The mozcloud-chart-migration skill NEVER runs git commit commands.** All git operations (add, commit, push) are the **user's responsibility** after reviewing the migration changes.
+
+These scripts are designed to be:
+- **Executed by the skill** - For setup, validation, and analysis (reducing token usage and improving reliability)
+- **Run manually by users** - For ad-hoc operations and manual workflows
+
+**The skill's role**: Prepare migration files, validate changes, create documentation
+**The user's role**: Review changes, run git commands, create PRs, deploy
 
 ## Scripts Overview
 
@@ -150,6 +159,8 @@ Validates migration using render-diff and manifest comparison.
 
 Here's how these scripts work together in a typical migration:
 
+### Skill-Executed Steps (Automated)
+
 ```bash
 # 1. Navigate to chart directory
 cd /path/to/charts/my-chart
@@ -163,20 +174,43 @@ cd /path/to/charts/my-chart
 # 4. Capture original manifests
 ./scripts/capture_manifests.sh dev
 
-# 5. [Make migration changes to values files and Chart.yaml]
-# ... edit values-dev.yaml, update Chart.yaml, etc. ...
+# 5. [Skill makes migration changes to values files and Chart.yaml]
+# ... skill edits values-dev.yaml, updates Chart.yaml, etc. ...
 
 # 6. Validate the migration
 ./scripts/validate_migration.sh dev --all-environments
 
-# 7. Review diff analysis
-cat .migration/DIFF_ANALYSIS_dev.md
-
-# 8. If validation passes, commit and push
-git add -A
-git commit -m "Migrate dev environment to mozcloud chart"
-git push -u origin $(git branch --show-current)
+# 7. [Skill creates documentation]
+# ... MIGRATION_PLAN_dev.md, CHANGES_dev.md, DIFF_ANALYSIS_dev.md, etc. ...
 ```
+
+### User-Only Steps (Manual Review and Commit)
+
+**IMPORTANT: The skill stops here. The following steps are the USER's responsibility:**
+
+```bash
+# 8. USER REVIEWS the migration changes
+cat .migration/DIFF_ANALYSIS_dev.md
+cat .migration/CHANGES_dev.md
+# Review all modified files: Chart.yaml, values-dev.yaml, templates/*
+
+# 9. USER COMMITS (skill never does this)
+git add Chart.yaml values-dev.yaml templates/ .gitignore
+git commit -m "Migrate dev environment to mozcloud chart
+
+- Add mozcloud dependency
+- Configure dev to use mozcloud chart
+- Gate custom templates
+- Preserve all resource names
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
+
+# 10. USER PUSHES and creates PR
+git push -u origin $(git branch --show-current)
+gh pr create --title "Migrate dev to mozcloud" --body "See .migration/ docs"
+```
+
+**The skill will NEVER execute steps 8-10. These are always the user's responsibility.**
 
 ## Multi-Region Example
 

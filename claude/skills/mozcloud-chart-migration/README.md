@@ -190,13 +190,13 @@ This approach:
 
 The skill includes several safety mechanisms:
 
-- **No automatic commits**: All changes require user review before committing
+- **Never commits changes**: The skill NEVER runs git commands (add, commit, push). All git operations are the user's responsibility after reviewing changes.
 - **No destructive commands**: Never runs `helm install`, `helm upgrade`, `helm delete`, or other destructive operations
 - **Environment isolation**: Verifies non-migrated environments show no changes
 - **Scoped file writes**: Only writes to the chart being migrated and `.migration/` directory
 - **ArgoCD-aware**: Designed for ArgoCD deployment workflow with simple rollback (delete branch or push fixes)
 - **Resource name preservation**: Requires explicit approval for any resource name changes
-- **Semantic validation**: Uses `render-diff` to verify resource equivalence before suggesting commit
+- **Semantic validation**: Uses `render-diff` to verify resource equivalence before user commits
 
 ### Permission Requests
 

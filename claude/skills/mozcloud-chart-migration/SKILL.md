@@ -7,6 +7,8 @@ disable-model-invocation: true
 
 ## General
 
+**CRITICAL: This skill NEVER commits changes.** The skill prepares migration files, validates changes, and creates documentation. The user is always responsible for reviewing changes and running git commands (add, commit, push, PR creation).
+
 We are migrating custom Helm charts in the provided directory to use a common shared `mozcloud` chart.
 This chart is stored in an OCI repository `oci://us-west1-docker.pkg.dev/moz-fx-platform-artifacts/mozcloud-charts` and should be added as a dependency of the chart being migrated.
 We want to use the latest version of the `mozcloud` chart.
