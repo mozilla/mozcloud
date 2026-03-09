@@ -166,17 +166,37 @@ All migration artifacts are stored in `.migration/`:
 #### Regional Values Support
 Automatically handles multi-region deployments with files like `values-stage-europe-west1.yaml`.
 
+#### Cross-Tenant Learning
+The skill learns from other tenant migrations on your local machine to apply consistent patterns:
+
+- **Git-ignored context**: `.migration/` directories are kept local (add to `.gitignore`) to avoid repository clutter and merge conflicts
+- **Pattern recognition**: Searches for other `.migration/` directories when starting new migrations
+- **Consistent conventions**: Applies naming patterns, configuration approaches, and solutions from previous migrations
+- **Local knowledge base**: Each developer builds their own migration context that informs future work
+
+**Recommended**: Add `.migration/` to your repository's `.gitignore`:
+```gitignore
+# Claude migration working directories (keep local only)
+.migration/
+```
+
+This approach:
+- Keeps rich migration documentation for local reference
+- Avoids repository clutter and merge conflicts
+- Allows pattern learning across tenants on the same machine
+- Keeps context scoped to each tenant directory
+
 ## Safety Guarantees
 
 The skill includes several safety mechanisms:
 
-- **No automatic commits**: All changes require user review before committing
+- **Never commits changes**: The skill NEVER runs git commands (add, commit, push). All git operations are the user's responsibility after reviewing changes.
 - **No destructive commands**: Never runs `helm install`, `helm upgrade`, `helm delete`, or other destructive operations
 - **Environment isolation**: Verifies non-migrated environments show no changes
 - **Scoped file writes**: Only writes to the chart being migrated and `.migration/` directory
 - **ArgoCD-aware**: Designed for ArgoCD deployment workflow with simple rollback (delete branch or push fixes)
 - **Resource name preservation**: Requires explicit approval for any resource name changes
-- **Semantic validation**: Uses `render-diff` to verify resource equivalence before suggesting commit
+- **Semantic validation**: Uses `render-diff` to verify resource equivalence before user commits
 
 ### Permission Requests
 
