@@ -1,0 +1,53 @@
+{
+  "skill_name": "mozcloud-chart-migration",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "hey so i need to migrate our fxa chart over to use the shared mozcloud chart. i'm in the chart directory right now (/workspace/charts/fxa-profile-server) and we have values files for dev, stage, and prod. can you start with dev first? not totally sure what the process is but i know we need to use that OCI registry chart",
+      "expected_output": "Runs pre-flight checks (git status, helm version, render-diff availability, OCI access), creates migration branch named claude-migration-fxa-profile-server-dev, sets up .migration/ directory structure, downloads mozcloud chart to .migration/mozcloud/, captures original manifests to .migration/manifests/dev/original.yaml, analyzes current chart structure, creates detailed migration plan in .migration/MIGRATION_PLAN_dev.md, asks user to review plan before proceeding",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "ok i'm back to work on the fxa migration we started yesterday. forgot exactly where we left off but there's a .migration folder here with some files. what's the next step?",
+      "expected_output": "Reads .migration/README.md first (entry point), identifies current state and which environment is being worked on (dev), reviews MIGRATION_PLAN_dev.md and CHANGES_dev.md to understand what's been done, determines next steps from README.md, continues work without redoing completed tasks, respects previous decisions",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "render-diff is showing like 3 resources missing after my migration. the chart directory is /workspace/charts/marketplace-api and i just finished migrating the stage environment. we had 12 resources before and now showing only 9. what do i check?",
+      "expected_output": "Checks if mozcloud.enabled is set to true in values-stage.yaml, verifies Chart.yaml has mozcloud dependency, compares workload names in mozcloud config against original Deployment names (must match exactly), reviews template gating to ensure custom templates are disabled for stage, checks if stage-specific resources were accidentally deleted, runs helm template to see actual rendered output, suggests fixes for the most likely issue",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "we have a multi-region setup for our sync chart. there's values-prod.yaml and also values-prod-europe-west1.yaml that we use together with helm template -f values-prod.yaml -f values-prod-europe-west1.yaml. how do i migrate this? currently in /workspace/charts/sync-service",
+      "expected_output": "Recognizes regional values file pattern, explains need to migrate both values-prod.yaml alone AND with regional file combined, creates migration plan that handles both scenarios, captures original manifests for both: helm template with just values-prod.yaml and helm template with values-prod.yaml + values-prod-europe-west1.yaml, validates both combinations work correctly after migration, documents regional handling in MIGRATION_PLAN_prod.md",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "all environments for the relay chart are migrated and merged to main. been running in prod for a week with no issues. ready to do the cleanup phase to remove duplicate configs and simplify things. chart is at /workspace/charts/relay-backend",
+      "expected_output": "Checks prerequisites: verifies all environments merged to main (git log), confirms Chart.yaml has mozcloud dependency with condition, asks user to confirm envs are stable, explains cleanup will consolidate values, remove unused templates, simplify Chart.yaml, validates changes show zero differences with render-diff, creates cleanup branch, follows cleanup-phase.md reference guide",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "i'm migrating the values-dev.yaml file for our worker chart and when i look at the plan, it wants to rename the Deployment from 'notification-worker-processor' to 'notification-worker'. that's going to cause downtime since k8s will see it as a new deployment. can we keep the original name?",
+      "expected_output": "Recognizes this is a resource name preservation issue, explains that preserving names is a PRIMARY goal, shows how to use the full original deployment name as the mozcloud workload key (workloads.notification-worker-processor not workloads.processor), updates migration plan to preserve the name exactly, confirms with user before implementing, documents the name preservation in CHANGES_dev.md",
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "working on migrating preview environment for our cicd-demos chart. i know preview envs are different from regular dev/stage. the chart is in /workspace/charts/circleci-demos and i need to migrate values-preview.yaml. what's special about preview environments?",
+      "expected_output": "References preview-environment-guide.md, explains preview environments have different resource naming requirements (preserve names in dev/stage, prefix with PR# in preview), describes preview-specific configuration patterns, identifies critical validation points for preview, creates migration plan that accounts for preview environment differences, notes any preview-specific settings that need special handling",
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "the chart i'm migrating has a custom nginx config with specific proxy settings and some lua scripts. its in templates/configmap-nginx.yaml. should i try to move this to mozcloud's default nginx config or keep the custom one? chart is at /workspace/charts/payment-gateway",
+      "expected_output": "References configuration-patterns.md for nginx guidance, explains mozcloud provides default nginx config, helps user decide between using mozcloud default (recommended) vs keeping custom nginx, asks about the custom nginx requirements (what lua scripts do, what proxy settings are critical), provides decision guide for static vs templated configs, recommends approach based on customization complexity",
+      "files": []
+    }
+  ]
+}

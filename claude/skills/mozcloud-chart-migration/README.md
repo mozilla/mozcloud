@@ -166,6 +166,26 @@ All migration artifacts are stored in `.migration/`:
 #### Regional Values Support
 Automatically handles multi-region deployments with files like `values-stage-europe-west1.yaml`.
 
+#### Cross-Tenant Learning
+The skill learns from other tenant migrations on your local machine to apply consistent patterns:
+
+- **Git-ignored context**: `.migration/` directories are kept local (add to `.gitignore`) to avoid repository clutter and merge conflicts
+- **Pattern recognition**: Searches for other `.migration/` directories when starting new migrations
+- **Consistent conventions**: Applies naming patterns, configuration approaches, and solutions from previous migrations
+- **Local knowledge base**: Each developer builds their own migration context that informs future work
+
+**Recommended**: Add `.migration/` to your repository's `.gitignore`:
+```gitignore
+# Claude migration working directories (keep local only)
+.migration/
+```
+
+This approach:
+- Keeps rich migration documentation for local reference
+- Avoids repository clutter and merge conflicts
+- Allows pattern learning across tenants on the same machine
+- Keeps context scoped to each tenant directory
+
 ## Safety Guarantees
 
 The skill includes several safety mechanisms:

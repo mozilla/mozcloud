@@ -21,7 +21,7 @@ fi
 
 **For ALL file operations, use the $CHART_DIR variable:**
 
-✓ **GOOD Examples:**
+[OK] **GOOD Examples:**
 ```bash
 # Creating directories
 mkdir -p $CHART_DIR/.migration/manifests/dev
@@ -38,7 +38,7 @@ EOF
 cat $CHART_DIR/values.yaml
 ```
 
-✗ **BAD Examples (relative paths can fail if working directory changes):**
+[FAIL] **BAD Examples (relative paths can fail if working directory changes):**
 ```bash
 mkdir -p .migration/manifests/dev
 helm template . -f values.yaml > .migration/manifests/dev/original.yaml

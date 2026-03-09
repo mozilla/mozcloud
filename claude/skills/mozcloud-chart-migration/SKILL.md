@@ -191,7 +191,7 @@ pwd  # Verify location
 ls -la $CHART_DIR/.migration/mozcloud/
 ```
 
-Store any temporary files, migration documentation, and related files in the `.migration` directory for easy cleanup after the migration is complete.
+**Note**: The `.migration` directory should be git-ignored (add to `.gitignore`) to avoid repository clutter. It stores migration documentation and artifacts locally, which can inform future tenant migrations on the same machine.
 
 ## Migration Directory Structure
 
@@ -243,6 +243,57 @@ When continuing work on an existing migration:
    - Update README.md at major milestones
    - Keep CHANGES_$ENV.md current with any resource name changes
    - Note any blockers or pending decisions
+
+## Learning from Other Tenant Migrations
+
+**Important**: `.migration/` directories are git-ignored to avoid repository clutter and merge conflicts. This means migration context stays local to each developer's workstation but can inform other migrations on the same machine.
+
+**Before starting a new migration**, search for other tenant migrations to learn from existing patterns and decisions:
+
+1. **Search for other `.migration/` directories:**
+   ```bash
+   # From current chart directory, search parent directories for other tenant migrations
+   find ../.. -type d -name ".migration" 2>/dev/null
+   ```
+
+2. **Read migration documentation from similar tenants:**
+   - Look for `.migration/README.md` files in other charts
+   - Check `.migration/CHANGES_*.md` for resource migration patterns
+   - Review `.migration/DIFF_ANALYSIS_*.md` to understand common changes
+   - Note any recurring patterns or solutions
+
+3. **Identify applicable patterns:**
+   - **Naming conventions**: How did other tenants handle resource names?
+   - **Workload configuration**: Common patterns for Deployment → mozcloud workload conversion
+   - **ExternalSecret mapping**: How were secret configurations migrated?
+   - **ConfigMap handling**: Static files vs mozcloud config patterns
+   - **Ingress/HTTPRoute**: Gateway and routing configurations
+   - **Preview environments**: Special handling for preview vs regular environments
+
+4. **Apply consistent patterns across tenants:**
+   - If multiple tenants used the same approach, prefer that pattern
+   - Document when you deviate from established patterns (and why)
+   - Note new patterns you discover for future migrations
+
+5. **Example search and analysis:**
+   ```bash
+   # Find all tenant migration READMEs
+   find ../.. -path "*/.migration/README.md" -type f 2>/dev/null
+
+   # Count how many tenants have completed migrations
+   find ../.. -path "*/.migration/STATUS.md" -type f 2>/dev/null | wc -l
+   ```
+
+**When to skip this step:**
+- This is the first migration on this machine (no other `.migration/` directories exist)
+- User explicitly requests to start fresh without referencing other migrations
+- The current tenant has very different requirements from others
+
+**Benefits of cross-tenant learning:**
+- Consistency across tenant migrations
+- Faster migrations by reusing proven patterns
+- Avoiding mistakes others already solved
+- Building institutional knowledge locally
 
 ## Starting a New Migration Plan
 
@@ -479,7 +530,7 @@ After ALL environments have been successfully migrated:
 1. Remove custom templates that are no longer needed
 2. Consolidate duplicate configuration into `values.yaml`
 3. Remove environment-specific flags for mozcloud dependency
-4. The `.migration` directory can be removed or archived
+4. The `.migration` directory should be kept locally (it's git-ignored) to inform future tenant migrations
 
 ## Security
 
