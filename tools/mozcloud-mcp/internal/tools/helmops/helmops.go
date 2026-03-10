@@ -94,7 +94,7 @@ func HelmTemplate(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolRe
 	}
 
 	if updateDeps {
-		if err := runDependencyUpdate(absChartPath); err != nil {
+		if err = runDependencyUpdate(absChartPath); err != nil {
 			return mcp.NewToolResultText(mcperr.New(
 				"dep_update_failed",
 				"dependency update failed: "+err.Error(),
@@ -127,7 +127,7 @@ func HelmTemplate(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolRe
 
 	settings := helmSettings()
 	cfg := new(action.Configuration)
-	if err := cfg.Init(settings.RESTClientGetter(), namespace, "memory", debugLog); err != nil {
+	if err = cfg.Init(settings.RESTClientGetter(), namespace, "memory", debugLog); err != nil {
 		return mcp.NewToolResultText(mcperr.New(
 			"helm_config_error",
 			"failed to init helm action config: "+err.Error(),
@@ -259,7 +259,7 @@ func HelmDependencyBuild(ctx context.Context, req mcp.CallToolRequest) (*mcp.Cal
 		).JSON()), nil
 	}
 
-	if err := pathsafe.Check(absChartPath, AllowedWriteRoots); err != nil {
+	if err = pathsafe.Check(absChartPath, AllowedWriteRoots); err != nil {
 		return mcp.NewToolResultText(mcperr.New(
 			"path_not_allowed",
 			"write path is outside allowed roots: "+err.Error(),
@@ -279,7 +279,7 @@ func HelmDependencyBuild(ctx context.Context, req mcp.CallToolRequest) (*mcp.Cal
 		Debug:            false,
 	}
 
-	if err := man.Build(); err != nil {
+	if err = man.Build(); err != nil {
 		return mcp.NewToolResultText(mcperr.New(
 			"dep_build_failed",
 			"dependency build failed: "+err.Error(),
@@ -351,7 +351,7 @@ func HelmDependencyUpdate(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 		).JSON()), nil
 	}
 
-	if err := pathsafe.Check(absChartPath, AllowedWriteRoots); err != nil {
+	if err = pathsafe.Check(absChartPath, AllowedWriteRoots); err != nil {
 		return mcp.NewToolResultText(mcperr.New(
 			"path_not_allowed",
 			"write path is outside allowed roots: "+err.Error(),
@@ -359,7 +359,7 @@ func HelmDependencyUpdate(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 		).JSON()), nil
 	}
 
-	if err := runDependencyUpdate(absChartPath); err != nil {
+	if err = runDependencyUpdate(absChartPath); err != nil {
 		return mcp.NewToolResultText(mcperr.New(
 			"dep_update_failed",
 			"dependency update failed: "+err.Error(),

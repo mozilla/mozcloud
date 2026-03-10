@@ -29,19 +29,18 @@ func ParseResources(manifests string) []string {
 	var resources []string
 	var apiVersion, kind string
 
-	for _, line := range strings.Split(manifests, "\n") {
+	for line := range strings.SplitSeq(manifests, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "---" {
 			apiVersion, kind = "", ""
 			continue
 		}
-		if strings.HasPrefix(line, "apiVersion:") {
-			apiVersion = strings.TrimSpace(strings.TrimPrefix(line, "apiVersion:"))
-		} else if strings.HasPrefix(line, "kind:") {
-			kind = strings.TrimSpace(strings.TrimPrefix(line, "kind:"))
-		} else if strings.HasPrefix(line, "name:") && apiVersion != "" && kind != "" {
-			name := strings.TrimSpace(strings.TrimPrefix(line, "name:"))
-			resources = append(resources, fmt.Sprintf("%s/%s/%s", apiVersion, kind, name))
+		if after, ok := strings.CutPrefix(line, "apiVersion:"); ok {
+			apiVersion = strings.TrimSpace(after)
+		} else if after, ok := strings.CutPrefix(line, "kind:"); ok {
+			kind = strings.TrimSpace(after)
+		} else if after, ok := strings.CutPrefix(line, "name:"); ok && apiVersion != "" && kind != "" {
+			resources = append(resources, fmt.Sprintf("%s/%s/%s", apiVersion, kind, strings.TrimSpace(after)))
 			apiVersion, kind = "", ""
 		}
 	}
@@ -52,7 +51,7 @@ func ParseResources(manifests string) []string {
 // returns a human-readable summary.
 func SummarizeDiff(diff string) string {
 	var adds, removes int
-	for _, line := range strings.Split(diff, "\n") {
+	for line := range strings.SplitSeq(diff, "\n") {
 		if strings.HasPrefix(line, "+") && !strings.HasPrefix(line, "+++") {
 			adds++
 		} else if strings.HasPrefix(line, "-") && !strings.HasPrefix(line, "---") {

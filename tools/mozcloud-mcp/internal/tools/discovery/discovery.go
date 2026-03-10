@@ -65,12 +65,9 @@ func HelmChartLatestVersion(ctx context.Context, req mcp.CallToolRequest) (*mcp.
 
 	// Parse version from the chart metadata YAML output
 	latest := ""
-	for _, line := range strings.Split(out, "\n") {
-		if strings.HasPrefix(line, "version:") {
-			parts := strings.SplitN(line, ":", 2)
-			if len(parts) == 2 {
-				latest = strings.TrimSpace(parts[1])
-			}
+	for line := range strings.SplitSeq(out, "\n") {
+		if after, ok := strings.CutPrefix(line, "version:"); ok {
+			latest = strings.TrimSpace(after)
 		}
 	}
 

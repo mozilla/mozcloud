@@ -112,7 +112,7 @@ func MigrationPreflightCheck(ctx context.Context, req mcp.CallToolRequest) (*mcp
 			Auths       map[string]json.RawMessage `json:"auths"`
 			CredHelpers map[string]string          `json:"credHelpers"`
 		}
-		if err := json.Unmarshal(data, &cfg); err == nil {
+		if err = json.Unmarshal(data, &cfg); err == nil {
 			_, inAuths := cfg.Auths[registry]
 			_, inCredHelpers := cfg.CredHelpers[registry]
 			if inAuths || inCredHelpers {

@@ -179,7 +179,7 @@ func RenderManifests(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 			RepositoryConfig: settings.RepositoryConfig,
 			RepositoryCache:  settings.RepositoryCache,
 		}
-		if err := man.Update(); err != nil {
+		if err = man.Update(); err != nil {
 			return mcp.NewToolResultText(mcperr.New(
 				"dep_update_failed",
 				"dependency update failed: "+err.Error(),
@@ -203,7 +203,8 @@ func RenderManifests(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 
 	vals := map[string]any{}
 	for _, f := range valuesFiles {
-		v, err := chartutil.ReadValuesFile(f)
+		var v chartutil.Values
+		v, err = chartutil.ReadValuesFile(f)
 		if err != nil {
 			return mcp.NewToolResultText(mcperr.New(
 				"values_load_failed",
@@ -216,7 +217,7 @@ func RenderManifests(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 
 	settings := cli.New()
 	cfg := new(action.Configuration)
-	if err := cfg.Init(settings.RESTClientGetter(), "default", "memory", debugLog); err != nil {
+	if err = cfg.Init(settings.RESTClientGetter(), "default", "memory", debugLog); err != nil {
 		return mcp.NewToolResultText(mcperr.New(
 			"helm_config_error",
 			"failed to init helm action config: "+err.Error(),
