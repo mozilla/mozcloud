@@ -14,8 +14,8 @@ import (
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mozilla/mozcloud/tools/mozcloud-mcp/internal/mcperr"
 	"github.com/mozilla/mozcloud/tools/mozcloud-mcp/internal/helmutil"
+	"github.com/mozilla/mozcloud/tools/mozcloud-mcp/internal/mcperr"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -26,7 +26,7 @@ import (
 
 const renderDiffBinary = "render-diff"
 
-func debugLog(format string, v ...interface{}) {
+func debugLog(format string, v ...any) {
 	fmt.Fprintf(os.Stderr, "[helm] "+format+"\n", v...)
 }
 
@@ -138,7 +138,6 @@ func RenderDiff(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResu
 	return mcp.NewToolResultText(string(b)), nil
 }
 
-
 // --- render_manifests ---
 
 type renderManifestsResult struct {
@@ -202,7 +201,7 @@ func RenderManifests(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 		releaseName = ch.Metadata.Name
 	}
 
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	for _, f := range valuesFiles {
 		v, err := chartutil.ReadValuesFile(f)
 		if err != nil {
@@ -256,5 +255,3 @@ func RenderManifests(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 	b, _ := json.Marshal(res)
 	return mcp.NewToolResultText(string(b)), nil
 }
-
-

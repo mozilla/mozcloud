@@ -9,11 +9,11 @@ import (
 
 // DeepMerge recursively merges src into dst. For keys present in both, if
 // both values are maps they are merged recursively; otherwise src wins.
-func DeepMerge(dst, src map[string]interface{}) {
+func DeepMerge(dst, src map[string]any) {
 	for k, srcVal := range src {
 		if dstVal, exists := dst[k]; exists {
-			dstMap, dstIsMap := dstVal.(map[string]interface{})
-			srcMap, srcIsMap := srcVal.(map[string]interface{})
+			dstMap, dstIsMap := dstVal.(map[string]any)
+			srcMap, srcIsMap := srcVal.(map[string]any)
 			if dstIsMap && srcIsMap {
 				DeepMerge(dstMap, srcMap)
 				continue

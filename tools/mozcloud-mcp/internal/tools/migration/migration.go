@@ -198,15 +198,15 @@ func MigrationReadStatus(ctx context.Context, req mcp.CallToolRequest) (*mcp.Cal
 // --- chart_read_metadata ---
 
 type chartMetadataResult struct {
-	Name                  string                 `json:"name"`
-	Version               string                 `json:"version"`
-	AppVersion            string                 `json:"app_version"`
-	Description           string                 `json:"description"`
-	APIVersion            string                 `json:"api_version"`
-	Type                  string                 `json:"type"`
-	Dependencies          []map[string]string    `json:"dependencies"`
-	HasMozcloudDependency bool                   `json:"has_mozcloud_dependency"`
-	Raw                   map[string]interface{} `json:"raw"`
+	Name                  string              `json:"name"`
+	Version               string              `json:"version"`
+	AppVersion            string              `json:"app_version"`
+	Description           string              `json:"description"`
+	APIVersion            string              `json:"api_version"`
+	Type                  string              `json:"type"`
+	Dependencies          []map[string]string `json:"dependencies"`
+	HasMozcloudDependency bool                `json:"has_mozcloud_dependency"`
+	Raw                   map[string]any      `json:"raw"`
 }
 
 func ChartReadMetadata(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -229,7 +229,7 @@ func ChartReadMetadata(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallT
 		).JSON()), nil
 	}
 
-	var raw map[string]interface{}
+	var raw map[string]any
 	if err := yaml.Unmarshal(data, &raw); err != nil {
 		return mcp.NewToolResultText(mcperr.New(
 			"yaml_parse_error",
@@ -258,9 +258,9 @@ func ChartReadMetadata(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallT
 		res.Type = v
 	}
 
-	if deps, ok := raw["dependencies"].([]interface{}); ok {
+	if deps, ok := raw["dependencies"].([]any); ok {
 		for _, dep := range deps {
-			if d, ok := dep.(map[string]interface{}); ok {
+			if d, ok := dep.(map[string]any); ok {
 				entry := map[string]string{}
 				for k, v := range d {
 					if s, ok := v.(string); ok {

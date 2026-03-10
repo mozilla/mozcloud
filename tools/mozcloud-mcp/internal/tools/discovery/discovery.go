@@ -89,8 +89,8 @@ func HelmChartLatestVersion(ctx context.Context, req mcp.CallToolRequest) (*mcp.
 // --- oci_check_auth ---
 
 type ociCheckAuthResult struct {
-	Authenticated bool        `json:"authenticated"`
-	Error         interface{} `json:"error"`
+	Authenticated bool `json:"authenticated"`
+	Error         any  `json:"error"`
 }
 
 func OciCheckAuth(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -214,7 +214,7 @@ func HelmShowSchema(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 			"Check disk space and permissions on "+os.TempDir(),
 		).JSON()), nil
 	}
-	defer os.RemoveAll(tmpDir)
+	defer os.RemoveAll(tmpDir) //nolint:errcheck // best-effort cleanup
 
 	ociRef := fmt.Sprintf("oci://%s/%s", strings.TrimPrefix(repo, "oci://"), chartName)
 	args := []string{"pull", ociRef, "--untar", "--untardir", tmpDir}

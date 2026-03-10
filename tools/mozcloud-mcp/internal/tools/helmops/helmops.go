@@ -17,8 +17,8 @@ import (
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mozilla/mozcloud/tools/mozcloud-mcp/internal/mcperr"
 	"github.com/mozilla/mozcloud/tools/mozcloud-mcp/internal/helmutil"
+	"github.com/mozilla/mozcloud/tools/mozcloud-mcp/internal/mcperr"
 	"github.com/mozilla/mozcloud/tools/mozcloud-mcp/internal/pathsafe"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -37,7 +37,7 @@ func helmSettings() *cli.EnvSettings {
 	return cli.New()
 }
 
-func debugLog(format string, v ...interface{}) {
+func debugLog(format string, v ...any) {
 	fmt.Fprintf(os.Stderr, "[helm] "+format+"\n", v...)
 }
 
@@ -46,8 +46,8 @@ func debugLog(format string, v ...interface{}) {
 // when multiple -f flags are passed. A shallow top-level merge is incorrect
 // because it would drop nested defaults from earlier files whenever a later
 // file contains the same top-level key.
-func loadValuesFiles(files []string) (map[string]interface{}, error) {
-	merged := map[string]interface{}{}
+func loadValuesFiles(files []string) (map[string]any, error) {
+	merged := map[string]any{}
 	for _, f := range files {
 		vals, err := chartutil.ReadValuesFile(f)
 		if err != nil {
@@ -57,8 +57,6 @@ func loadValuesFiles(files []string) (map[string]interface{}, error) {
 	}
 	return merged, nil
 }
-
-
 
 // --- helm_template ---
 
@@ -394,9 +392,9 @@ func HelmDependencyUpdate(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 // --- helm_pull ---
 
 type pullResult struct {
-	Path          string                 `json:"path"`
-	Version       string                 `json:"version"`
-	ChartMetadata map[string]interface{} `json:"chart_metadata"`
+	Path          string         `json:"path"`
+	Version       string         `json:"version"`
+	ChartMetadata map[string]any `json:"chart_metadata"`
 }
 
 func HelmPull(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -461,7 +459,7 @@ func HelmPull(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult
 
 	// Try to load chart metadata from the pulled chart
 	chartDir := filepath.Join(absDestination, chartName)
-	metadata := map[string]interface{}{}
+	metadata := map[string]any{}
 	if ch, err := loader.Load(chartDir); err == nil {
 		metadata["name"] = ch.Metadata.Name
 		metadata["version"] = ch.Metadata.Version

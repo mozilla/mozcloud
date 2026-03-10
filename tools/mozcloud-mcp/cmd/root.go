@@ -62,7 +62,9 @@ func run(cmd *cobra.Command, args []string) error {
 		case <-ctx.Done():
 			log.Printf("[mozcloud-mcp] shutting down stdio server")
 			// Close stdin to unblock the ReadString goroutine inside Listen.
-			os.Stdin.Close()
+			if err := os.Stdin.Close(); err != nil {
+				log.Printf("[mozcloud-mcp] error closing stdin: %v", err)
+			}
 			if err := <-listenErr; err != nil && !errors.Is(err, context.Canceled) {
 				return fmt.Errorf("stdio server error: %w", err)
 			}

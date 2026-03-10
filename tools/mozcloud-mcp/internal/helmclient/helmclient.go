@@ -22,7 +22,7 @@ func Settings() *cli.EnvSettings {
 // client so it is safe to call without a live cluster.
 func NewActionConfig(ns string, settings *cli.EnvSettings) (*action.Configuration, error) {
 	cfg := new(action.Configuration)
-	logger := func(format string, v ...interface{}) {
+	logger := func(format string, v ...any) {
 		log.Printf("[helm] "+format, v...)
 	}
 	// Use "memory" driver so no Kubernetes cluster is required for rendering.
@@ -34,6 +34,6 @@ func NewActionConfig(ns string, settings *cli.EnvSettings) (*action.Configuratio
 
 // DebugLog is a no-op debug logger suitable for passing to Helm SDK calls
 // that expect a printf-style function. It writes to stderr.
-func DebugLog(format string, v ...interface{}) {
+func DebugLog(format string, v ...any) {
 	fmt.Fprintf(os.Stderr, "[helm-debug] "+format+"\n", v...)
 }

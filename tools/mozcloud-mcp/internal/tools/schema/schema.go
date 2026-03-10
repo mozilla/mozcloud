@@ -73,7 +73,7 @@ func SchemaValidateValues(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	}
 
 	// Convert YAML values to a Go map, then to JSON for gojsonschema
-	var valuesMap interface{}
+	var valuesMap any
 	if err := yaml.Unmarshal([]byte(valuesYAML), &valuesMap); err != nil {
 		return mcp.NewToolResultText(mcperr.New(
 			"yaml_parse_error",
@@ -82,7 +82,7 @@ func SchemaValidateValues(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 		).JSON()), nil
 	}
 
-	// yaml.Unmarshal may produce map[string]interface{} with interface{} keys;
+	// yaml.Unmarshal may produce map[string]any with any keys;
 	// convert to JSON-compatible types via a JSON round-trip.
 	valuesJSONStr, err := jsonRoundTrip(valuesMap)
 	if err != nil {
@@ -126,7 +126,7 @@ func SchemaValidateValues(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 
 // jsonRoundTrip converts a value through JSON marshal/unmarshal to ensure
 // all map keys are strings (gojsonschema requirement).
-func jsonRoundTrip(v interface{}) (string, error) {
+func jsonRoundTrip(v any) (string, error) {
 	b, err := json.Marshal(convertYAMLMap(v))
 	if err != nil {
 		return "", fmt.Errorf("json marshal: %w", err)
@@ -134,24 +134,24 @@ func jsonRoundTrip(v interface{}) (string, error) {
 	return string(b), nil
 }
 
-// convertYAMLMap recursively converts map[interface{}]interface{} (produced by
-// yaml.v3) to map[string]interface{} so it can be JSON-marshalled.
-func convertYAMLMap(v interface{}) interface{} {
+// convertYAMLMap recursively converts map[any]any (produced by
+// yaml.v3) to map[string]any so it can be JSON-marshalled.
+func convertYAMLMap(v any) any {
 	switch val := v.(type) {
-	case map[interface{}]interface{}:
-		m := make(map[string]interface{}, len(val))
+	case map[any]any:
+		m := make(map[string]any, len(val))
 		for k, v2 := range val {
 			m[fmt.Sprintf("%v", k)] = convertYAMLMap(v2)
 		}
 		return m
-	case map[string]interface{}:
-		m := make(map[string]interface{}, len(val))
+	case map[string]any:
+		m := make(map[string]any, len(val))
 		for k, v2 := range val {
 			m[k] = convertYAMLMap(v2)
 		}
 		return m
-	case []interface{}:
-		s := make([]interface{}, len(val))
+	case []any:
+		s := make([]any, len(val))
 		for i, v2 := range val {
 			s[i] = convertYAMLMap(v2)
 		}

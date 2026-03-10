@@ -127,7 +127,9 @@ func TestChartReadMetadata_MissingChartPath(t *testing.T) {
 	}
 	text := result.Content[0].(mcp.TextContent).Text
 	var errResp struct {
-		Error struct{ Code string `json:"code"` } `json:"error"`
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
 	}
 	if err := json.Unmarshal([]byte(text), &errResp); err != nil {
 		t.Fatal(err)
