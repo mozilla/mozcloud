@@ -189,6 +189,10 @@ Then call `helm_pull` with:
 - `destination`: `$CHART_DIR/.migration/`
 - `untar`: `true`
 
+To inspect the chart's default values and schema, call:
+- `helm_show_values` with `repository=us-west1-docker.pkg.dev/moz-fx-platform-artifacts/mozcloud-charts`, `chart_name=mozcloud`, and `version` set to the latest version
+- `helm_show_schema` with `repository=us-west1-docker.pkg.dev/moz-fx-platform-artifacts/mozcloud-charts`, `chart_name=mozcloud`, and `version` set to the latest version
+
 The chart will be extracted to `$CHART_DIR/.migration/mozcloud/`.
 
 **Note**: The `.migration` directory should be git-ignored (add to `.gitignore`) to avoid repository clutter. It stores migration documentation and artifacts locally, which can inform future tenant migrations on the same machine.
