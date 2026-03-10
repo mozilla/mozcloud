@@ -18,6 +18,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mozilla/mozcloud/tools/mozcloud-mcp/internal/mcperr"
+	"github.com/mozilla/mozcloud/tools/mozcloud-mcp/internal/helmutil"
 	"github.com/mozilla/mozcloud/tools/mozcloud-mcp/internal/pathsafe"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -40,7 +41,11 @@ func debugLog(format string, v ...interface{}) {
 	fmt.Fprintf(os.Stderr, "[helm] "+format+"\n", v...)
 }
 
-// loadValuesFiles merges a list of YAML values files into a single map.
+// loadValuesFiles deep-merges a list of YAML values files into a single map.
+// Later files take precedence over earlier ones, matching Helm CLI behaviour
+// when multiple -f flags are passed. A shallow top-level merge is incorrect
+// because it would drop nested defaults from earlier files whenever a later
+// file contains the same top-level key.
 func loadValuesFiles(files []string) (map[string]interface{}, error) {
 	merged := map[string]interface{}{}
 	for _, f := range files {
@@ -48,36 +53,12 @@ func loadValuesFiles(files []string) (map[string]interface{}, error) {
 		if err != nil {
 			return nil, fmt.Errorf("reading values file %q: %w", f, err)
 		}
-		for k, v := range vals {
-			merged[k] = v
-		}
+		helmutil.DeepMerge(merged, vals)
 	}
 	return merged, nil
 }
 
-// resourceSummary builds a list of "apiVersion/Kind/name" strings from manifests.
-func resourceSummary(manifests string) []string {
-	var summary []string
-	var curAPIVersion, curKind string
 
-	for _, line := range strings.Split(manifests, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "---" {
-			curAPIVersion, curKind = "", ""
-			continue
-		}
-		if strings.HasPrefix(line, "apiVersion:") {
-			curAPIVersion = strings.TrimSpace(strings.TrimPrefix(line, "apiVersion:"))
-		} else if strings.HasPrefix(line, "kind:") {
-			curKind = strings.TrimSpace(strings.TrimPrefix(line, "kind:"))
-		} else if strings.HasPrefix(line, "name:") && curAPIVersion != "" && curKind != "" {
-			name := strings.TrimSpace(strings.TrimPrefix(line, "name:"))
-			summary = append(summary, fmt.Sprintf("%s/%s/%s", curAPIVersion, curKind, name))
-			curAPIVersion, curKind = "", ""
-		}
-	}
-	return summary
-}
 
 // --- helm_template ---
 
@@ -174,7 +155,7 @@ func HelmTemplate(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolRe
 	}
 
 	manifests := rel.Manifest
-	summary := resourceSummary(manifests)
+	summary := helmutil.ParseResources(manifests)
 	if summary == nil {
 		summary = []string{}
 	}

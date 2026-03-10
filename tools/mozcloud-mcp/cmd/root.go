@@ -3,12 +3,14 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"runtime/debug"
 	"syscall"
+	"time"
 
 	mcpserver "github.com/mark3labs/mcp-go/server"
 	"github.com/mozilla/mozcloud/tools/mozcloud-mcp/internal/server"
@@ -48,15 +50,43 @@ func run(cmd *cobra.Command, args []string) error {
 	case "stdio":
 		log.Printf("[mozcloud-mcp] starting stdio transport (version %s)", getVersion())
 		srv := mcpserver.NewStdioServer(s)
-		if err := srv.Listen(ctx, os.Stdin, os.Stdout); err != nil {
-			return fmt.Errorf("stdio server error: %w", err)
+		listenErr := make(chan error, 1)
+		go func() {
+			listenErr <- srv.Listen(ctx, os.Stdin, os.Stdout)
+		}()
+		select {
+		case err := <-listenErr:
+			if err != nil && !errors.Is(err, context.Canceled) {
+				return fmt.Errorf("stdio server error: %w", err)
+			}
+		case <-ctx.Done():
+			log.Printf("[mozcloud-mcp] shutting down stdio server")
+			// Close stdin to unblock the ReadString goroutine inside Listen.
+			os.Stdin.Close()
+			if err := <-listenErr; err != nil && !errors.Is(err, context.Canceled) {
+				return fmt.Errorf("stdio server error: %w", err)
+			}
 		}
 	case "sse":
 		addr := ":8080"
 		log.Printf("[mozcloud-mcp] starting SSE transport on %s (version %s)", addr, getVersion())
 		srv := mcpserver.NewSSEServer(s)
-		if err := srv.Start(addr); err != nil {
+		serveErr := make(chan error, 1)
+		go func() {
+			if err := srv.Start(addr); err != nil {
+				serveErr <- err
+			}
+		}()
+		select {
+		case err := <-serveErr:
 			return fmt.Errorf("SSE server error: %w", err)
+		case <-ctx.Done():
+			log.Printf("[mozcloud-mcp] shutting down SSE server")
+			shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer shutdownCancel()
+			if err := srv.Shutdown(shutdownCtx); err != nil {
+				return fmt.Errorf("SSE server shutdown error: %w", err)
+			}
 		}
 	default:
 		return fmt.Errorf("unknown transport %q: must be stdio or sse", transport)

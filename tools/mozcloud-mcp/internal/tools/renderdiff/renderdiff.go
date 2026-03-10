@@ -15,6 +15,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mozilla/mozcloud/tools/mozcloud-mcp/internal/mcperr"
+	"github.com/mozilla/mozcloud/tools/mozcloud-mcp/internal/helmutil"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -47,8 +48,22 @@ func RenderDiff(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResu
 		).JSON()), nil
 	}
 
-	// Build render-diff args
-	args := []string{"--path", chartPath}
+	// Resolve chart path to absolute so we can use it as the working directory
+	absChartPath, err := filepath.Abs(chartPath)
+	if err != nil {
+		return mcp.NewToolResultText(mcperr.New(
+			"path_error",
+			"cannot resolve chart_path: "+err.Error(),
+			"Provide an absolute or valid relative path to the chart directory",
+		).JSON()), nil
+	}
+
+	// Build render-diff args.
+	// We run render-diff with cmd.Dir=absChartPath and pass --path . so that
+	// render-diff treats values files as relative to the chart directory rather
+	// than joining them with an absolute --path (which doubles the path in Go's
+	// filepath.Join when values are already absolute).
+	args := []string{"--path", ".", "--no-color"}
 
 	if gitRef := req.GetString("git_ref", ""); gitRef != "" {
 		args = append(args, "--ref", gitRef)
@@ -63,6 +78,13 @@ func RenderDiff(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResu
 		args = append(args, "--update")
 	}
 	for _, f := range req.GetStringSlice("values_files", nil) {
+		// Convert absolute paths to relative (from absChartPath) so render-diff
+		// can resolve them correctly relative to --path .
+		if filepath.IsAbs(f) {
+			if rel, relErr := filepath.Rel(absChartPath, f); relErr == nil {
+				f = rel
+			}
+		}
 		args = append(args, "--values", f)
 	}
 
@@ -77,6 +99,7 @@ func RenderDiff(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResu
 
 	var stdout, stderr bytes.Buffer
 	cmd := exec.CommandContext(ctx, path, args...)
+	cmd.Dir = absChartPath
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
@@ -90,7 +113,7 @@ func RenderDiff(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResu
 		// render-diff exits non-zero when there are differences
 		if strings.Contains(output, "---") || strings.Contains(output, "+++") || strings.Contains(output, "Diff") {
 			hasDiff = true
-			summary = summarizeDiff(output)
+			summary = helmutil.SummarizeDiff(output)
 		} else {
 			// Actual error
 			return mcp.NewToolResultText(mcperr.New(
@@ -102,7 +125,7 @@ func RenderDiff(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResu
 	} else {
 		if strings.Contains(output, "---") || strings.Contains(output, "+++") {
 			hasDiff = true
-			summary = summarizeDiff(output)
+			summary = helmutil.SummarizeDiff(output)
 		}
 	}
 
@@ -115,17 +138,6 @@ func RenderDiff(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResu
 	return mcp.NewToolResultText(string(b)), nil
 }
 
-func summarizeDiff(diff string) string {
-	var adds, removes int
-	for _, line := range strings.Split(diff, "\n") {
-		if strings.HasPrefix(line, "+") && !strings.HasPrefix(line, "+++") {
-			adds++
-		} else if strings.HasPrefix(line, "-") && !strings.HasPrefix(line, "---") {
-			removes++
-		}
-	}
-	return fmt.Sprintf("%d additions, %d removals", adds, removes)
-}
 
 // --- render_manifests ---
 
@@ -200,9 +212,7 @@ func RenderManifests(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 				"Ensure the values file exists and is valid YAML",
 			).JSON()), nil
 		}
-		for k, val := range v {
-			vals[k] = val
-		}
+		helmutil.DeepMerge(vals, v)
 	}
 
 	settings := cli.New()
@@ -233,7 +243,7 @@ func RenderManifests(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 	}
 
 	manifests := rel.Manifest
-	resources := parseResources(manifests)
+	resources := helmutil.ParseResources(manifests)
 	if resources == nil {
 		resources = []string{}
 	}
@@ -247,24 +257,4 @@ func RenderManifests(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 	return mcp.NewToolResultText(string(b)), nil
 }
 
-func parseResources(manifests string) []string {
-	var resources []string
-	var apiVersion, kind, name string
 
-	for _, line := range strings.Split(manifests, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "---" {
-			apiVersion, kind, name = "", "", ""
-			continue
-		}
-		if strings.HasPrefix(line, "apiVersion:") {
-			apiVersion = strings.TrimSpace(strings.TrimPrefix(line, "apiVersion:"))
-		} else if strings.HasPrefix(line, "kind:") {
-			kind = strings.TrimSpace(strings.TrimPrefix(line, "kind:"))
-		} else if strings.HasPrefix(line, "name:") && apiVersion != "" && kind != "" && name == "" {
-			name = strings.TrimSpace(strings.TrimPrefix(line, "name:"))
-			resources = append(resources, fmt.Sprintf("%s/%s/%s", apiVersion, kind, name))
-		}
-	}
-	return resources
-}
