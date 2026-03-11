@@ -60,6 +60,14 @@ We will have a shared `values.yaml` file and one for each environment: `values-d
   - If regional values files are found, we want to migrate both the `values-stage.yaml` on its own as well as with the regional values file.
 We want to convert environments one at a time starting with `values-dev.yaml` if it exists.
 
+**Important Context for cloudops-infra Overlay Values (cloudops-infra repo only):**
+
+All tenants in the `cloudops-infra` repository use a rules-based overlay system — per-environment values files (`values-dev.yaml`, etc.) do not exist in the chart and are generated as part of the migration. Environment-specific values live in `../../values/app.yaml` relative to the chart. See [references/cloudops-infra-overlay-values.md](references/cloudops-infra-overlay-values.md) for:
+- How the rules/filters system works and how to read matching values
+- How to derive the correct release name for helm_template calls
+- Why render-diff cannot be used and how to compare manifests manually
+- How to apply overlay values when generating `values-<env>.yaml`
+
 **Important Context for Preview Environments:**
 
 Preview environments have different requirements than dev/stage. See [references/preview-environment-guide.md](references/preview-environment-guide.md) for complete details on:
@@ -553,3 +561,4 @@ Common issues and solutions:
 - [Working Directory Management](references/working-directory-management.md) - Absolute paths, safety checks
 - [Migration Directory Structure](references/migration-directory-structure.md) - File purposes, examples
 - [Troubleshooting](references/troubleshooting.md) - Common issues and solutions
+- [cloudops-infra Overlay Values](references/cloudops-infra-overlay-values.md) - Rules-based overlay system (cloudops-infra repo only)
