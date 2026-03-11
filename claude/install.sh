@@ -2,44 +2,72 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel)"
 
-# Flags
-MCP_PROJECT=false
-MCP_USER=false
+# Default scope
+SCOPE=user
+UPDATE=false
+
+MCP_MODULE="github.com/mozilla/mozcloud/tools/mozcloud-mcp"
 
 usage() {
   cat <<EOF
 Usage: $(basename "$0") [OPTIONS]
 
-Install mozcloud Claude skills and agents, and optionally configure the
-mozcloud MCP server for Claude Code.
+Install mozcloud Claude skills and agents, and configure the mozcloud MCP server.
 
 Options:
-  --mcp-project   Register the mozcloud MCP server at project scope
-                  (runs: claude mcp add --scope project ...).
-  --mcp-user      Register the mozcloud MCP server at user scope
-                  (runs: claude mcp add --scope user ...).
-  -h, --help      Show this help message and exit.
-
-Default behaviour (no flags): symlink skills and agents to ~/.claude/.
+  --scope <project|user>  Link skills/agents to .claude/ in the project root
+                          (project) or ~/.claude/ (user, default), and register
+                          the MCP server at the same scope.
+  --update                Update the mozcloud-mcp binary via go install $MCP_MODULE@latest.
+  -h, --help              Show this help message and exit.
 EOF
 }
 
-for arg in "$@"; do
-  case "$arg" in
-    --mcp-project) MCP_PROJECT=true ;;
-    --mcp-user)    MCP_USER=true ;;
-    -h|--help)     usage; exit 0 ;;
-    *) echo "Unknown flag: $arg" >&2; usage >&2; exit 1 ;;
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --scope)
+      SCOPE="${2:-}"
+      if [[ "$SCOPE" != "project" && "$SCOPE" != "user" ]]; then
+        echo "Error: --scope must be 'project' or 'user'" >&2
+        usage >&2
+        exit 1
+      fi
+      shift 2
+      ;;
+    --update)
+      UPDATE=true
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown flag: $1" >&2
+      usage >&2
+      exit 1
+      ;;
   esac
 done
 
 # ---------------------------------------------------------------------------
-# Symlink skills and agents (always runs)
+# Determine target directory based on scope
 # ---------------------------------------------------------------------------
 
-mkdir -p "$HOME/.claude/skills"
-mkdir -p "$HOME/.claude/agents"
+if [[ "$SCOPE" == "project" ]]; then
+  CLAUDE_DIR="$PROJECT_ROOT/.claude"
+else
+  CLAUDE_DIR="$HOME/.claude"
+fi
+
+# ---------------------------------------------------------------------------
+# Symlink skills and agents
+# ---------------------------------------------------------------------------
+
+mkdir -p "$CLAUDE_DIR/skills"
+mkdir -p "$CLAUDE_DIR/agents"
 
 link() {
   local src="$1"
@@ -56,37 +84,29 @@ link() {
 
 for skill_dir in "$SCRIPT_DIR/skills"/*/; do
   skill_name="$(basename "$skill_dir")"
-  link "$skill_dir" "$HOME/.claude/skills/$skill_name"
+  link "$skill_dir" "$CLAUDE_DIR/skills/$skill_name"
 done
 
 for agent_file in "$SCRIPT_DIR/agents"/*.md; do
   [ -e "$agent_file" ] || continue  # skip if glob finds nothing
   agent_name="$(basename "$agent_file")"
-  link "$agent_file" "$HOME/.claude/agents/$agent_name"
+  link "$agent_file" "$CLAUDE_DIR/agents/$agent_name"
 done
 
 # ---------------------------------------------------------------------------
-# MCP server registration via claude mcp add
+# MCP server — build and register if not already registered; update if requested
 # ---------------------------------------------------------------------------
 
-build_mcp() {
-  echo "Building mozcloud-mcp..."
-  (cd "$SCRIPT_DIR/../tools/mozcloud-mcp" && go install .)
+if [[ "$UPDATE" == true ]]; then
+  echo "Updating mozcloud-mcp..."
+  go install "$MCP_MODULE@latest"
+  echo "mozcloud-mcp updated to $(go env GOPATH)/bin"
+elif claude mcp list 2>/dev/null | grep -q "mozcloud"; then
+  echo "mozcloud MCP server already registered (use --update to upgrade the binary)"
+else
+  echo "Installing mozcloud-mcp..."
+  go install "$MCP_MODULE@latest"
   echo "mozcloud-mcp installed to $(go env GOPATH)/bin"
-}
-
-add_mcp() {
-  local scope="$1"
-  claude mcp add --scope "$scope" mozcloud mozcloud-mcp -- --transport stdio
-  echo "registered MCP server at $scope scope"
-}
-
-if [ "$MCP_PROJECT" = true ]; then
-  build_mcp
-  add_mcp project
-fi
-
-if [ "$MCP_USER" = true ]; then
-  build_mcp
-  add_mcp user
+  claude mcp add --scope "$SCOPE" mozcloud mozcloud-mcp -- --transport stdio
+  echo "registered MCP server at $SCOPE scope"
 fi

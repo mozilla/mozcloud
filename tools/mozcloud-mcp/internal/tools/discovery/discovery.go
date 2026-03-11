@@ -1,17 +1,22 @@
 // Package discovery implements OCI/chart discovery tools:
 //   - helm_chart_latest_version
 //   - oci_check_auth
+//   - helm_chart_read_file
 //   - helm_show_values
 //   - helm_show_schema
 package discovery
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math/rand"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -140,6 +145,89 @@ func OciCheckAuth(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolRe
 	if !authenticated {
 		res.Error = fmt.Sprintf("no credential entry found for %s in ~/.docker/config.json", registry)
 	}
+	b, _ := json.Marshal(res)
+	return mcp.NewToolResultText(string(b)), nil
+}
+
+// --- helm_chart_read_file ---
+
+type chartReadFileResult struct {
+	Files map[string]string `json:"files"`
+}
+
+// HelmChartReadFile reads one or more files from a local .tgz chart archive.
+// file_path supports glob patterns (e.g. "*/values.yaml", "**/*.json").
+func HelmChartReadFile(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	tgzPath := req.GetString("tgz_path", "")
+	filePath := req.GetString("file_path", "")
+
+	if tgzPath == "" || filePath == "" {
+		return mcp.NewToolResultText(mcperr.New(
+			"invalid_input",
+			"tgz_path and file_path are required",
+			"Provide both tgz_path (path to .tgz archive) and file_path (file name or glob pattern)",
+		).JSON()), nil
+	}
+
+	f, err := os.Open(tgzPath)
+	if err != nil {
+		return mcp.NewToolResultText(mcperr.New(
+			"open_failed",
+			"failed to open archive: "+err.Error(),
+			"Ensure tgz_path points to a valid .tgz chart archive",
+		).JSON()), nil
+	}
+	defer f.Close() //nolint:errcheck
+
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		return mcp.NewToolResultText(mcperr.New(
+			"gzip_error",
+			"failed to read gzip stream: "+err.Error(),
+			"Ensure the file is a valid .tgz (gzip-compressed tar) archive",
+		).JSON()), nil
+	}
+	defer gz.Close() //nolint:errcheck
+
+	tr := tar.NewReader(gz)
+	matched := map[string]string{}
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return mcp.NewToolResultText(mcperr.New(
+				"tar_read_error",
+				"failed to read tar entry: "+err.Error(),
+				"The archive may be corrupted",
+			).JSON()), nil
+		}
+		if hdr.Typeflag != tar.TypeReg {
+			continue
+		}
+		// Zip-slip protection: skip entries with path traversal components.
+		if strings.Contains(hdr.Name, "..") {
+			continue
+		}
+		// Match file_path as a glob against the full entry name or its base name.
+		okFull, _ := path.Match(filePath, hdr.Name)
+		okBase, _ := path.Match(filePath, filepath.Base(hdr.Name))
+		if !okFull && !okBase {
+			continue
+		}
+		data, err := io.ReadAll(tr)
+		if err != nil {
+			return mcp.NewToolResultText(mcperr.New(
+				"read_error",
+				fmt.Sprintf("failed to read %s: %s", hdr.Name, err.Error()),
+				"The archive may be corrupted",
+			).JSON()), nil
+		}
+		matched[hdr.Name] = string(data)
+	}
+
+	res := chartReadFileResult{Files: matched}
 	b, _ := json.Marshal(res)
 	return mcp.NewToolResultText(string(b)), nil
 }
