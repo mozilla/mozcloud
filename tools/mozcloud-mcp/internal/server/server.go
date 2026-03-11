@@ -53,6 +53,21 @@ func New(version string, allowedWriteRoots []string) *mcpserver.MCPServer {
 	)
 
 	s.AddTool(
+		mcp.NewTool("helm_chart_read_file",
+			mcp.WithDescription("Read one or more files from a local .tgz Helm chart archive; file_path supports glob patterns"),
+			mcp.WithString("tgz_path",
+				mcp.Required(),
+				mcp.Description("Path to the local .tgz chart archive, e.g. charts/mozcloud-0.9.0.tgz"),
+			),
+			mcp.WithString("file_path",
+				mcp.Required(),
+				mcp.Description("File name or glob pattern to match inside the archive, e.g. '*/values.yaml' or 'Chart.yaml'"),
+			),
+		),
+		discovery.HelmChartReadFile,
+	)
+
+	s.AddTool(
 		mcp.NewTool("helm_show_values",
 			mcp.WithDescription("Show the default values.yaml for a Helm chart from an OCI registry"),
 			mcp.WithString("repository",
