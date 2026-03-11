@@ -446,49 +446,6 @@ externalSecrets:
 
 ---
 
-### Pattern: AWS Secrets Manager
-
-**Custom Template**:
-```yaml
-apiVersion: external-secrets.io/v1beta1
-kind: ExternalSecret
-metadata:
-  name: my-app-aws-secrets
-spec:
-  refreshInterval: 1h
-  secretStoreRef:
-    name: aws-secret-store
-    kind: SecretStore
-  target:
-    name: my-app-aws-secrets
-  data:
-  - secretKey: aws-access-key
-    remoteRef:
-      key: my-app-credentials
-      property: access_key
-  - secretKey: aws-secret-key
-    remoteRef:
-      key: my-app-credentials
-      property: secret_key
-```
-
-**Mozcloud Configuration**:
-```yaml
-externalSecrets:
-  my-app-aws-secrets:
-    backendType: awsSecretsManager
-    region: us-west-2
-    data:
-      - key: my-app-credentials
-        name: aws-access-key
-        property: access_key
-      - key: my-app-credentials
-        name: aws-secret-key
-        property: secret_key
-```
-
----
-
 ## Ingress
 
 Mozcloud supports Ingress resources natively - no conversion to HTTPRoute needed! The configuration is nested under the workload's `hosts` section.
