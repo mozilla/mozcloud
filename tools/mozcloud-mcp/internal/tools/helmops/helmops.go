@@ -94,10 +94,10 @@ func HelmTemplate(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolRe
 	}
 
 	if updateDeps {
-		if err = runDependencyUpdate(absChartPath); err != nil {
+		if out, depErr := runDependencyUpdate(absChartPath); depErr != nil {
 			return mcp.NewToolResultText(mcperr.New(
 				"dep_update_failed",
-				"dependency update failed: "+err.Error(),
+				"dependency update failed: "+depErr.Error()+"\n"+out,
 				"Run `helm dependency update "+absChartPath+"` manually and check Chart.yaml",
 			).JSON()), nil
 		}
@@ -270,8 +270,9 @@ func HelmDependencyBuild(ctx context.Context, req mcp.CallToolRequest) (*mcp.Cal
 	settings := helmSettings()
 	providers := getter.All(settings)
 
+	var buildBuf bytes.Buffer
 	man := &downloader.Manager{
-		Out:              os.Stderr,
+		Out:              &buildBuf,
 		ChartPath:        absChartPath,
 		Getters:          providers,
 		RepositoryConfig: settings.RepositoryConfig,
@@ -282,7 +283,7 @@ func HelmDependencyBuild(ctx context.Context, req mcp.CallToolRequest) (*mcp.Cal
 	if err = man.Build(); err != nil {
 		return mcp.NewToolResultText(mcperr.New(
 			"dep_build_failed",
-			"dependency build failed: "+err.Error(),
+			"dependency build failed: "+err.Error()+"\n"+buildBuf.String(),
 			"Run `helm dependency build "+absChartPath+"` manually and verify Chart.lock is present",
 		).JSON()), nil
 	}
@@ -317,19 +318,21 @@ type depUpdateResult struct {
 	Resolved    []string `json:"resolved"`
 }
 
-func runDependencyUpdate(absChartPath string) error {
+func runDependencyUpdate(absChartPath string) (string, error) {
+	var buf bytes.Buffer
 	settings := helmSettings()
 	providers := getter.All(settings)
 
 	man := &downloader.Manager{
-		Out:              os.Stderr,
+		Out:              &buf,
 		ChartPath:        absChartPath,
 		Getters:          providers,
 		RepositoryConfig: settings.RepositoryConfig,
 		RepositoryCache:  settings.RepositoryCache,
 		Debug:            false,
 	}
-	return man.Update()
+	err := man.Update()
+	return buf.String(), err
 }
 
 func HelmDependencyUpdate(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -359,10 +362,10 @@ func HelmDependencyUpdate(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 		).JSON()), nil
 	}
 
-	if err = runDependencyUpdate(absChartPath); err != nil {
+	if out, depErr := runDependencyUpdate(absChartPath); depErr != nil {
 		return mcp.NewToolResultText(mcperr.New(
 			"dep_update_failed",
-			"dependency update failed: "+err.Error(),
+			"dependency update failed: "+depErr.Error()+"\n"+out,
 			"Run `helm dependency update "+absChartPath+"` manually and check Chart.yaml",
 		).JSON()), nil
 	}

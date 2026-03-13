@@ -170,10 +170,11 @@ func RenderManifests(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 	}
 
 	if updateDeps {
+		var depBuf bytes.Buffer
 		settings := cli.New()
 		providers := getter.All(settings)
 		man := &downloader.Manager{
-			Out:              os.Stderr,
+			Out:              &depBuf,
 			ChartPath:        absChartPath,
 			Getters:          providers,
 			RepositoryConfig: settings.RepositoryConfig,
@@ -182,7 +183,7 @@ func RenderManifests(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 		if err = man.Update(); err != nil {
 			return mcp.NewToolResultText(mcperr.New(
 				"dep_update_failed",
-				"dependency update failed: "+err.Error(),
+				"dependency update failed: "+err.Error()+"\n"+depBuf.String(),
 				"Run `helm dependency update "+absChartPath+"` manually",
 			).JSON()), nil
 		}
