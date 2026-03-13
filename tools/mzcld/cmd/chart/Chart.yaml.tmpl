@@ -1,0 +1,11 @@
+apiVersion: v2
+name: {{ .Name }}
+description: {{ .Description }}
+type: application
+version: 0.1.0
+
+dependencies:
+  - name: mozcloud
+    version: "{{ .MozcloudVersion }}"
+    repository: "oci://us-west1-docker.pkg.dev/moz-fx-platform-artifacts/mozcloud-charts"
+    condition: mozcloud.enabled
