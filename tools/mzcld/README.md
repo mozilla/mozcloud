@@ -45,6 +45,14 @@ Update the MCP binary to the latest published version:
 mzcld claude install --update
 ```
 
+### `mzcld claude uninstall`
+
+Remove installed skills, agents, and the MCP server.
+
+```bash
+mzcld claude uninstall
+```
+
 ## Development
 
 ```bash
