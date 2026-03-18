@@ -140,6 +140,20 @@ If `all_passed` is `false`, surface the `blockers` list to the user and stop. Co
 - OCI auth failure: run `gcloud auth configure-docker us-west1-docker.pkg.dev`
 - Dirty git state: commit or stash changes (or get explicit user confirmation to proceed)
 
+## Running Parallel Migrations (Optional)
+
+Each migration creates its own branch and only modifies files in the target chart directory. If you need to work on multiple chart migrations simultaneously — without switching branches — git worktrees let you check out a different branch into a separate directory while sharing the same repo.
+
+```bash
+# From the repo root, create a worktree for a migration branch
+git worktree add migrations/cicd-demos claude-migration-cicd-demos-dev
+
+# Work in that directory — it's on the migration branch, main is untouched
+cd migrations/cicd-demos/path/to/chart
+```
+
+Each worktree has its own working directory and branch, so concurrent migrations don't interfere. This is entirely optional — the skill works the same way whether you're using a worktree or the main checkout.
+
 ## Working Directory Management
 
 **CRITICAL**: Always use absolute paths with `$CHART_DIR` variable when running bash/git commands to prevent files from being created in wrong locations.
