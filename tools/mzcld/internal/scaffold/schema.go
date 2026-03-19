@@ -25,7 +25,7 @@ type Schema struct {
 	Enum                 []interface{}      `json:"enum"`
 }
 
-// AdditionalProperties can be a bool or a schema object in JSON Schema.
+// AdditionalProps can be a bool or a schema object in JSON Schema.
 // We unmarshal it manually to handle both.
 type AdditionalProps struct {
 	Schema *Schema

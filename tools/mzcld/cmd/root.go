@@ -4,9 +4,12 @@ package cmd
 import (
 	"os"
 
+	"github.com/mozilla/mozcloud/tools/mzcld/cmd/bastion"
 	"github.com/mozilla/mozcloud/tools/mzcld/cmd/chart"
 	"github.com/mozilla/mozcloud/tools/mzcld/cmd/claude"
 	mzinit "github.com/mozilla/mozcloud/tools/mzcld/cmd/init"
+	"github.com/mozilla/mozcloud/tools/mzcld/cmd/iap"
+	"github.com/mozilla/mozcloud/tools/mzcld/cmd/jit"
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -48,4 +51,7 @@ func init() {
 	rootCmd.AddCommand(mzinit.Cmd)
 	rootCmd.AddCommand(claude.Cmd)
 	rootCmd.AddCommand(chart.Cmd)
+	rootCmd.AddCommand(jit.Cmd)
+	rootCmd.AddCommand(iap.Cmd)
+	rootCmd.AddCommand(bastion.Cmd)
 }
