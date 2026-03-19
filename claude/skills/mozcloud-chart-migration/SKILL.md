@@ -3,6 +3,7 @@ name: mozcloud-chart-migration
 description: Assist with migrating custom tenant Helm charts to the mozcloud shared Helm chart
 user-invocable: true
 disable-model-invocation: true
+allowed-tools: Read, Grep, Glob, mcp__mozcloud
 ---
 
 ## Requirements
@@ -12,7 +13,7 @@ This skill requires the **`mozcloud` MCP server** to be registered with Claude C
 If MCP tools (`migration_preflight_check`, `helm_template`, etc.) are unavailable, ask the user to run from the repository root:
 
 ```bash
-./claude/install.sh --mcp-project
+./claude/install.sh 
 ```
 
 ## General
