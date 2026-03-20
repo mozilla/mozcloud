@@ -37,6 +37,7 @@ Our main goal is to end up with a chart that has no templates if possible. The v
 - **Rollback strategy**: If migration has issues, simply delete the branch or push fixes - no complex rollback procedures needed
 - Once merged to main, changes deploy to the target environment
 - Engineers will manually verify deployments - focus on generating correct values and templates with minimal resource changes
+- **Prune behavior**: ArgoCD prune is **disabled by default**. Resources removed from the desired state (gated-out templates, renamed workloads) are **not automatically deleted** from the cluster — they become orphans. Engineers must prune these manually via the ArgoCD web interface after a sync. Always identify and document orphaned resources as part of the migration plan.
 
 **Migration Branch Strategy:**
 - Each migration branch isolates changes from other environments
@@ -147,10 +148,10 @@ Each migration creates its own branch and only modifies files in the target char
 
 ```bash
 # From the repo root, create a worktree for a migration branch
-git worktree add migrations/cicd-demos claude-migration-cicd-demos-dev
+git worktree add migrations/<chart-name> claude-migration-<chart-name>-dev
 
 # Work in that directory — it's on the migration branch, main is untouched
-cd migrations/cicd-demos/path/to/chart
+cd migrations/<chart-name>/path/to/chart
 ```
 
 Each worktree has its own working directory and branch, so concurrent migrations don't interfere. This is entirely optional — the skill works the same way whether you're using a worktree or the main checkout.
@@ -188,7 +189,7 @@ Use the returned metadata to confirm the chart name with the user before proceed
 **Step 2: Create migration branch:**
 
 Using `git` create a new branch called `claude-migration-$CHART_NAME-$ENV` where `$CHART_NAME` and `$ENV` match the target chart and environment values file.
-- Example: `claude-migration-cicd-demos-dev`
+- Example: `claude-migration-<chart-name>-dev`
 - For uniqueness, you may append a date if needed: `claude-migration-$CHART_NAME-$ENV-$(date +%Y%m%d)`
 
 **Step 3: Create migration directory structure:**
@@ -347,7 +348,7 @@ When continuing work on an existing migration:
 2. **Check ArgoCD Image Updater state:**
    - ArgoCD Image Updater automatically manages image tags for each environment. The currently deployed image is written back to a file matching the pattern:
      `.argocd-source-$TENANT-$ENV-$REGION-$CHARTNAME.yaml`
-     For example: `.argocd-source-sync-dev-us-west1-tokenserver.yaml`
+     For example: `.argocd-source-<tenant>-<env>-<region>-<chartname>.yaml`
    - Read this file from the chart directory (it lives alongside `Chart.yaml`). Look for `image.name` and `image.tag` parameters:
      ```yaml
      helm:
@@ -381,7 +382,7 @@ When continuing work on an existing migration:
    ## Resource Impact Summary
    - **Added**: 0 resources
    - **Modified**: TBD
-   - **Deleted**: 0 resources
+   - **Orphaned** (removed from desired state, require manual pruning via ArgoCD): 0 resources
    - **Unchanged**: TBD
 
    ## Changes That May Trigger Pod Restarts
@@ -421,6 +422,7 @@ When continuing work on an existing migration:
         - Technical reason (if name cannot be preserved)
         - Alternative options (if any exist)
       - Wait for approval - do not proceed until user explicitly approves
+      - If a rename is approved: add the old resource name to `CHANGES_$ENV.md` as an orphan requiring manual pruning via the ArgoCD web interface after the migration sync
 
    This applies to all resources including:
    - Deployments/Rollouts
@@ -454,11 +456,11 @@ When continuing work on an existing migration:
      - Prompt for input if a resource cannot be created by the shared chart
      - **CRITICAL**: Preserve original resource names exactly if possible
        - The mozcloud workload name becomes the Deployment name
-       - Use the FULL original deployment name as the workload key (e.g., `gha-fxa-profile-worker`, not `profile-worker`)
+       - Use the FULL original deployment name as the workload key (e.g., `<tenant>-<component>-worker`, not `<component>-worker`)
        - Example:
          ```
-         Original: Deployment "gha-fxa-profile-worker"
-         Mozcloud: workloads.gha-fxa-profile-worker (NOT workloads.profile-worker)
+         Original: Deployment "<tenant>-<component>-worker"
+         Mozcloud: workloads.<tenant>-<component>-worker (NOT workloads.<component>-worker)
          ```
        - **Minimizing resource name changes is a PRIMARY goal, not optional**
 
@@ -469,18 +471,18 @@ When continuing work on an existing migration:
      # Before (old custom chart parameter paths)
      deployment:
        charts:
-         tokenserver:
+         <chart-name>:
            images:
-             syncstorage-rs:
+             <image-name>:
                image_name: image.name
                image_tag: image.tag
 
      # After (mozcloud parameter paths)
      deployment:
        charts:
-         tokenserver:
+         <chart-name>:
            images:
-             syncstorage-rs:
+             <image-name>:
                image_name: global.mozcloud.image.repository
                image_tag: global.mozcloud.image.tag
      ```
@@ -520,7 +522,7 @@ After completing the migration, perform these validation steps in order:
    ## Resource Impact Summary
    - **Added**: X resources (list names)
    - **Modified**: Y resources (list names)
-   - **Deleted**: Z resources (list names)
+   - **Orphaned** (removed from desired state, require manual pruning via ArgoCD): Z resources (list names)
    - **Unchanged**: N resources
 
    ## Changes That May Trigger Pod Restarts
@@ -565,6 +567,7 @@ Before considering a migration complete, verify:
 - [ ] `.migration/DIFF_ANALYSIS_$ENV.md` is complete
 - [ ] `.migration/STATUS.md` is updated
 - [ ] `.migration/README.md` is updated with current status
+- [ ] Orphaned resources identified and listed in `CHANGES_$ENV.md` (old resource names from renames or removed templates that engineers must prune via ArgoCD web interface after sync)
 - [ ] User has reviewed and approved the changes
 
 ## Post-Migration Cleanup

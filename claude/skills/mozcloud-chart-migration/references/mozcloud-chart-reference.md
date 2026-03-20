@@ -203,14 +203,14 @@ By default mozcloud creates a SA named after `global.mozcloud.app_code`. To pres
 mozcloud:
   serviceAccounts:
     default:
-      enabled: false     # Disable the default app_code-named SA
-    tokenserver:         # Use the original SA name as the key
+      enabled: false        # Disable the default app_code-named SA
+    <original-sa-name>:     # Use the original SA name as the key
       gcpServiceAccount:
-        name: gke-dev    # GCP SA name (part before @ in the email)
+        name: <gcp-sa-name> # GCP SA name (part before @ in the email)
 
   workloads:
     myapp:
-      serviceAccount: tokenserver  # Reference the custom SA in each workload
+      serviceAccount: <original-sa-name>  # Reference the custom SA in each workload
 ```
 
 ### BackendConfig Options (GKE Ingress)
@@ -242,6 +242,7 @@ The following configurations from custom templates are **not currently supported
 | `BackendConfig.connectionDraining` | Not supported | Cannot set `drainingTimeoutSec`. |
 | `BackendConfig.healthCheck` | Not supported | NEG health checks are used instead. |
 | `PodDisruptionBudget` | Not generated | Keep as a custom template (ungated — does not duplicate any mozcloud resource). |
+| `nginx.enabled: false` (with GKE Ingress) | Not supported | mozcloud's Service always targets port `8080` named `http`, which requires the nginx sidecar. Without nginx, the pod has no port named `http` and traffic cannot reach the app. **Always keep `nginx.enabled: true` (the default) for any workload with a GKE Ingress host.** |
 
 ## Troubleshooting Chart Issues
 
