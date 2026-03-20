@@ -296,34 +296,33 @@ ambiguity in `MIGRATION_PLAN_<env>.md`.
 cloudops-infra charts use `{{ .Chart.Name }}-{{ .Release.Name }}` as the fullname (where
 `Release.Name` = the env, e.g., `dev`). So all resources are named `<chart>-<env>`.
 
-The mozcloud workload key becomes the Deployment/Service/HPA name. **Always use the full
-`<chart>-<env>` name as the workload key** — not a shortened version — to preserve the original
-resource names and avoid the selector immutability problem with a rename.
+Because cloudops-infra charts deploy to **completely different Kubernetes environments** from the
+mozcloud target, there is no requirement to preserve original resource names. **Use mozcloud
+chart standard naming** — the workload key should be the chart/app name without the env suffix:
 
 ```yaml
 mozcloud:
   workloads:
-    <chart>-dev:    # ← full original name, not just "<chart>" or "app"
+    <chart>:    # ← mozcloud standard: chart name only, not "<chart>-<env>"
       component: app
       ...
 ```
 
+This means resource names will change (e.g., `myapp-dev` → `myapp`), which is expected and
+acceptable. The selector immutability concern does not apply since this is a fresh deployment
+in a new environment, not an in-place upgrade of an existing workload.
+
 ---
 
-## Selector Immutability — Always Applies
+## Selector Immutability — Not a Concern for cloudops-infra
 
-Every cloudops-infra chart migration will result in changed Deployment selector labels. The
-original charts use Jenkins-era labels (`app.kubernetes.io/managed-by: jenkins`,
-`app.kubernetes.io/instance: <env>`, often with hardcoded env values like `instance: stage`
-across all environments). mozcloud uses its own label convention (`env_code: <env>`, etc.).
+Because cloudops-infra charts deploy to **completely different Kubernetes environments**, there
+are no existing Deployments to conflict with. Selector label changes (Jenkins-era labels →
+mozcloud label convention) are expected and require no special handling — the new Deployment
+is simply created fresh in the target environment.
 
-Because `spec.selector.matchLabels` is immutable in Kubernetes, **every cloudops-infra migration
-requires Deployment delete+recreate on first sync**. This is unavoidable and expected. Always:
-
-1. Call this out in `MIGRATION_PLAN_<env>.md` and `CHANGES_<env>.md`
-2. Flag it in `DIFF_ANALYSIS_<env>.md` as a functional change requiring engineering attention
-3. Recommend coordinating the first sync for a low-traffic window
-4. Note that old Deployments become orphans (ArgoCD prune is disabled) and need manual pruning
+Do **not** flag selector changes as a blocking concern in `DIFF_ANALYSIS_<env>.md`. Note them
+as an expected difference from the original chart pattern, nothing more.
 
 ---
 
