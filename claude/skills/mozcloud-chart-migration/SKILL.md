@@ -37,6 +37,7 @@ Our main goal is to end up with a chart that has no templates if possible. The v
 - **Rollback strategy**: If migration has issues, simply delete the branch or push fixes - no complex rollback procedures needed
 - Once merged to main, changes deploy to the target environment
 - Engineers will manually verify deployments - focus on generating correct values and templates with minimal resource changes
+- **Prune behavior**: ArgoCD prune is **disabled by default**. Resources removed from the desired state (gated-out templates, renamed workloads) are **not automatically deleted** from the cluster — they become orphans. Engineers must prune these manually via the ArgoCD web interface after a sync. Always identify and document orphaned resources as part of the migration plan.
 
 **Migration Branch Strategy:**
 - Each migration branch isolates changes from other environments
@@ -147,10 +148,10 @@ Each migration creates its own branch and only modifies files in the target char
 
 ```bash
 # From the repo root, create a worktree for a migration branch
-git worktree add migrations/cicd-demos claude-migration-cicd-demos-dev
+git worktree add migrations/<chart-name> claude-migration-<chart-name>-dev
 
 # Work in that directory — it's on the migration branch, main is untouched
-cd migrations/cicd-demos/path/to/chart
+cd migrations/<chart-name>/path/to/chart
 ```
 
 Each worktree has its own working directory and branch, so concurrent migrations don't interfere. This is entirely optional — the skill works the same way whether you're using a worktree or the main checkout.
@@ -188,7 +189,7 @@ Use the returned metadata to confirm the chart name with the user before proceed
 **Step 2: Create migration branch:**
 
 Using `git` create a new branch called `claude-migration-$CHART_NAME-$ENV` where `$CHART_NAME` and `$ENV` match the target chart and environment values file.
-- Example: `claude-migration-cicd-demos-dev`
+- Example: `claude-migration-<chart-name>-dev`
 - For uniqueness, you may append a date if needed: `claude-migration-$CHART_NAME-$ENV-$(date +%Y%m%d)`
 
 **Step 3: Create migration directory structure:**
@@ -344,10 +345,27 @@ When continuing work on an existing migration:
    - If there is no `values-dev.yaml`, try `values-stage.yaml`
    - If neither exists, check which values files are available and prompt for selection
 
+2. **Check ArgoCD Image Updater state:**
+   - ArgoCD Image Updater automatically manages image tags for each environment. The currently deployed image is written back to a file matching the pattern:
+     `.argocd-source-$TENANT-$ENV-$REGION-$CHARTNAME.yaml`
+     For example: `.argocd-source-<tenant>-<env>-<region>-<chartname>.yaml`
+   - Read this file from the chart directory (it lives alongside `Chart.yaml`). Look for `image.name` and `image.tag` parameters:
+     ```yaml
+     helm:
+       parameters:
+       - name: image.name
+         value: us-docker.pkg.dev/my-project/my-repo/my-image
+       - name: image.tag
+         value: abc1234
+     ```
+   - Use these values to populate `global.mozcloud.image.repository` and `global.mozcloud.image.tag` in the environment values file, so the migrated chart starts from the same image that is currently running — not a hardcoded `latest`.
+   - If the file does not exist or contains no image parameters, fall back to whatever the existing values files specify.
+
 2. **Understand current state:**
    - Read the custom helm chart's templates
    - Note any custom resources, helpers, or special configurations
    - Identify dependencies in `Chart.yaml`
+   - Check if mozcloud is already a dependency (e.g. from a prior preview environment migration) — if so, only update the version if needed rather than adding a duplicate entry
 
 3. **Capture current manifests:**
    - Render the helm chart using `helm_template` with:
@@ -364,7 +382,7 @@ When continuing work on an existing migration:
    ## Resource Impact Summary
    - **Added**: 0 resources
    - **Modified**: TBD
-   - **Deleted**: 0 resources
+   - **Orphaned** (removed from desired state, require manual pruning via ArgoCD): 0 resources
    - **Unchanged**: TBD
 
    ## Changes That May Trigger Pod Restarts
@@ -404,6 +422,7 @@ When continuing work on an existing migration:
         - Technical reason (if name cannot be preserved)
         - Alternative options (if any exist)
       - Wait for approval - do not proceed until user explicitly approves
+      - If a rename is approved: add the old resource name to `CHANGES_$ENV.md` as an orphan requiring manual pruning via the ArgoCD web interface after the migration sync
 
    This applies to all resources including:
    - Deployments/Rollouts
@@ -431,20 +450,46 @@ When continuing work on an existing migration:
      - Ensure this dependency can be toggled in the values file
      - Enable only for the environment we're migrating or ones that have already been migrated
    - Ensure none of the custom chart templates are included in the environment we're migrating, unless there is a resource that cannot be generated by the shared mozcloud chart
-     - We do not want to remove the templates entirely
+     - Templates that are truly unused in **all** environments (not just the one being migrated) may be deleted entirely rather than gated — confirm with the user before deleting
+     - For all other templates: do not remove them entirely
      - Wrap any templates in a flag that can be disabled for the environment we're migrating
      - Prompt for input if a resource cannot be created by the shared chart
      - **CRITICAL**: Preserve original resource names exactly if possible
        - The mozcloud workload name becomes the Deployment name
-       - Use the FULL original deployment name as the workload key (e.g., `gha-fxa-profile-worker`, not `profile-worker`)
+       - Use the FULL original deployment name as the workload key (e.g., `<tenant>-<component>-worker`, not `<component>-worker`)
        - Example:
          ```
-         Original: Deployment "gha-fxa-profile-worker"
-         Mozcloud: workloads.gha-fxa-profile-worker (NOT workloads.profile-worker)
+         Original: Deployment "<tenant>-<component>-worker"
+         Mozcloud: workloads.<tenant>-<component>-worker (NOT workloads.<component>-worker)
          ```
        - **Minimizing resource name changes is a PRIMARY goal, not optional**
 
-7. **Document changes:**
+7. **Update the tenant file:**
+   - After migrating to `global.mozcloud.image.repository` and `global.mozcloud.image.tag`, the tenant file in the `global-platform-admin` repository must be updated so ArgoCD Image Updater writes image tags to the correct Helm parameter paths.
+   - The tenant file lives at `tenants/$APP_CODE.yaml` in the `global-platform-admin` repo. Find the `deployment.charts.$CHARTNAME.images.$IMAGENAME` entry and update `image_name` and `image_tag`:
+     ```yaml
+     # Before (old custom chart parameter paths)
+     deployment:
+       charts:
+         <chart-name>:
+           images:
+             <image-name>:
+               image_name: image.name
+               image_tag: image.tag
+
+     # After (mozcloud parameter paths)
+     deployment:
+       charts:
+         <chart-name>:
+           images:
+             <image-name>:
+               image_name: global.mozcloud.image.repository
+               image_tag: global.mozcloud.image.tag
+     ```
+   - If this is not updated, ArgoCD Image Updater will continue writing to the old parameter paths, which no longer affect the deployed image after migration.
+   - Note: this change in `global-platform-admin` should be made as a separate PR alongside or immediately after the chart migration PR.
+
+8. **Document changes:**
    - Show a summary of all changes made
    - Store detailed changes in `.migration/CHANGES_$ENV.md`
    - Include:
@@ -477,7 +522,7 @@ After completing the migration, perform these validation steps in order:
    ## Resource Impact Summary
    - **Added**: X resources (list names)
    - **Modified**: Y resources (list names)
-   - **Deleted**: Z resources (list names)
+   - **Orphaned** (removed from desired state, require manual pruning via ArgoCD): Z resources (list names)
    - **Unchanged**: N resources
 
    ## Changes That May Trigger Pod Restarts
@@ -522,6 +567,7 @@ Before considering a migration complete, verify:
 - [ ] `.migration/DIFF_ANALYSIS_$ENV.md` is complete
 - [ ] `.migration/STATUS.md` is updated
 - [ ] `.migration/README.md` is updated with current status
+- [ ] Orphaned resources identified and listed in `CHANGES_$ENV.md` (old resource names from renames or removed templates that engineers must prune via ArgoCD web interface after sync)
 - [ ] User has reviewed and approved the changes
 
 ## Post-Migration Cleanup

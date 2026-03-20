@@ -564,7 +564,7 @@ render-diff -f values-dev.yaml -su
 
 ## Common Mistakes to Avoid
 
-### ❌ Mistake 1: Forgetting the "not"
+### Mistake 1: Forgetting the "not"
 
 ```yaml
 # WRONG - this enables template when mozcloud is enabled
@@ -578,7 +578,7 @@ render-diff -f values-dev.yaml -su
 {{- end }}
 ```
 
-### ❌ Mistake 2: Gating Helper Functions
+### Mistake 2: Gating Helper Functions
 
 ```yaml
 # WRONG - don't gate helper functions
@@ -594,7 +594,7 @@ app: {{ .Chart.Name }}
 {{- end }}
 ```
 
-### ❌ Mistake 3: Inconsistent Gating
+### Mistake 3: Inconsistent Gating
 
 ```yaml
 # WRONG - service gated, but deployment not gated
@@ -615,7 +615,7 @@ kind: Service
 # CORRECT - gate related resources together
 ```
 
-### ❌ Mistake 4: Gating Resources Mozcloud Doesn't Create
+### Mistake 4: Gating Resources Mozcloud Doesn't Create
 
 ```yaml
 # WRONG - gating a custom resource that mozcloud can't create

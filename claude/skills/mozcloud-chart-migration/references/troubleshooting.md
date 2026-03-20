@@ -1,5 +1,83 @@
 # Troubleshooting Common Issues
 
+## ArgoCD sync fails with "spec.selector is immutable"
+
+**Symptoms:**
+```
+Deployment.apps "myapp" is invalid: spec.selector: Invalid value: ...: field is immutable
+```
+
+**Cause:**
+mozcloud changes the pod selector labels from the original chart's convention (e.g. `app.kubernetes.io/name: myapp`, `app.kubernetes.io/instance: dev`) to its own convention (e.g. `app.kubernetes.io/name: <app_code>`, `env_code: dev`). Kubernetes does not allow patching `spec.selector` on an existing Deployment — the resource must be deleted and recreated.
+
+**Important — selector labels are immutable and should be preserved when possible:**
+`spec.selector` is set once at Deployment creation time and can never be changed. Any migration that modifies selector labels forces a Deployment delete-and-recreate, causing a period of unavailability. When designing or modifying a chart, always check whether selector labels will change before merging — if they can be preserved, preserve them. For mozcloud migrations, the selector change is unavoidable because mozcloud enforces its own label convention (`app.kubernetes.io/name: <app_code>`, `env_code: <env>`), but this should be called out explicitly in the migration plan and communicated to the team before the sync.
+
+**Fix:**
+Delete the affected Deployments via the ArgoCD web interface and re-trigger the sync. ArgoCD will recreate them immediately with the new selectors. There will be a brief period of unavailability during recreation.
+
+In the ArgoCD UI: navigate to the application, find the affected Deployment resources, select each one, and use **Delete** to remove them. Then trigger a fresh sync — ArgoCD will recreate them with the new selectors.
+
+**Note:** This is expected for every tenant migrating to mozcloud and should be communicated to the team before merging. Plan the sync during a low-traffic window for production environments.
+
+**Zero-Downtime Alternative (Parallel Deployment Strategy):**
+
+If the service cannot tolerate a brief outage during selector migration, use new permanent workload names that do not conflict with the existing Deployment names. This requires a two-phase approach.
+
+**Critical constraint — workload key controls both Deployment and Service name:**
+
+In mozcloud, the workload key becomes both the Deployment name and the Service name. There is no way to use the same workload key as the original Deployment while avoiding the immutable selector conflict. This means:
+
+- The new Deployment name will be different from the original (permanent change)
+- The new Service name will also be different from the original (permanent change)
+- The new Ingress will point to the new Service — traffic does NOT automatically split between old and new pods
+
+The old Service is NOT retained automatically. When `mozcloud.enabled: true`, the old Service template is gated out and removed from ArgoCD's desired state. For old pods to continue receiving traffic during Phase 1, the old Service must be kept alive through explicit template gating.
+
+**Phase 1 — Run old and new simultaneously (migration PR)**
+
+Gate out only the old **Deployments** (to avoid the immutable selector conflict), but keep the old **Service** and **Ingress** alive by gating them separately. This requires splitting the gate condition in the old templates — Deployment templates get the full `mozcloud.enabled` gate, while Service and Ingress templates temporarily remain ungated or use a separate flag.
+
+Add the new mozcloud workloads with permanent new names alongside:
+
+```yaml
+# Example: original Deployments were myapp, myapp-worker, etc.
+# New permanent names (prefix with app_code or another stable identifier):
+mozcloud:
+  workloads:
+    <app_code>-myapp:
+      component: app
+      ...
+    <app_code>-myapp-worker:
+      component: worker
+      ...
+```
+
+After Phase 1 merge:
+- Old Service (`myapp`) remains, routing Ingress traffic to the old pods
+- Old pods continue running as orphaned Deployments (not in desired state — ArgoCD prune is disabled, so they remain until explicitly pruned)
+- New Deployments (`<app_code>-myapp`, etc.) start up alongside them
+- New mozcloud Service (`<app_code>-myapp`) and Ingress are created but not yet the live traffic path
+
+Verify the new Deployments are healthy before proceeding.
+
+**Phase 2 — Cutover (follow-up PR)**
+
+Once the new Deployments are confirmed healthy:
+
+1. Update the Ingress (or DNS) to route traffic to the new Service
+2. Apply the full `mozcloud.enabled` gate to remove the old Service and Ingress from desired state
+3. Sync ArgoCD, then prune the old Deployments, Service, and Ingress via the **ArgoCD web interface** (navigate to the application, select each orphaned resource, and use the Delete action)
+
+The new names are permanent going forward — no rename step needed.
+
+**Trade-offs:**
+- Deployment and Service names change permanently (update any internal service-to-service callers that reference the old Service name)
+- Requires careful split of template gating between Deployment and Service/Ingress templates
+- Worker/cron Deployments will process jobs in both old and new instances during the overlap window — verify idempotency before using this approach for them
+- Monitoring dashboards and alerts keyed on old Deployment/Service names must be updated
+- Two PRs/syncs required instead of one
+
 ## Render-diff shows missing resources
 
 **Symptoms:**
@@ -42,7 +120,7 @@
 
 **Solutions:**
 - Verify mozcloud workload key matches full original name
-  - Use `gha-fxa-profile-worker`, NOT `profile-worker`
+  - Use `<tenant>-<component>-worker`, NOT `<component>-worker`
 - Check for `nameOverride` or `fullnameOverride` in values
 - Review mozcloud chart's naming conventions in `values.schema.json`
 - Compare rendered manifests side-by-side:

@@ -75,11 +75,12 @@ If `render-diff` is not available, prompt the user to install it from `https://g
    - Values that have no direct equivalent (flag these)
    - Templates that duplicate what MozCloud generates (mark for removal)
    - Custom resources that MozCloud cannot replace (keep these)
-3. **Resource Name Preservation (Mandatory):**
+3. **Resource Name Preservation:**
    - List all current resource names from original manifests
    - For each resource, verify how MozCloud will name it
-   - If any name differs from the original: stop, document it, and ask the user for approval before implementing
-   - Use the FULL original deployment name as the workload key (e.g., `gha-fxa-profile-worker`, not `profile-worker`)
+   - **cloudops-infra exception**: Charts from `cloudops-infra` deploy to completely different Kubernetes environments — resource names do NOT need to be preserved. Use mozcloud chart standard naming (workload key = chart name only, e.g., `myapp` not `myapp-dev`). Name changes are expected and require no user approval.
+   - For all other repositories: if any name differs from the original, stop, document it, and ask the user for approval before implementing
+   - Use the FULL original deployment name as the workload key for non-cloudops-infra charts (e.g., `gha-fxa-profile-worker`, not `profile-worker`)
 4. **Service migration**: Map each custom Service template to a `backends` entry under the appropriate workload.
 5. **Ingress/Gateway migration**: Map each custom Ingress to a `hosts` entry using `httpRoutes.rules` for path-based routing.
 6. Document your migration plan before making changes.
