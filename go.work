@@ -1,5 +1,7 @@
-go 1.25.3
+go 1.25.5
 
 use ./tools/render-diff
 
 use ./tools/mozcloud-mcp
+
+use ./tools/mzcld
