@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strings"
 
+	"golang.org/x/oauth2"
 	"google.golang.org/api/impersonate"
 )
 
@@ -60,22 +61,32 @@ func DiscoverOAuthClientID(ctx context.Context, host string, client *http.Client
 	)
 }
 
-// GenerateToken generates an IAP token by impersonating serviceAccountEmail.
-// It uses the caller's Application Default Credentials.
-func GenerateToken(ctx context.Context, clientID, serviceAccountEmail string) (string, error) {
+// NewTokenSource creates an IAP token source by impersonating serviceAccountEmail.
+// The returned source handles token caching and refresh automatically.
+func NewTokenSource(ctx context.Context, clientID, serviceAccountEmail string) (oauth2.TokenSource, error) {
 	ts, err := impersonate.IDTokenSource(ctx, impersonate.IDTokenConfig{
 		Audience:        clientID,
 		TargetPrincipal: serviceAccountEmail,
 		IncludeEmail:    true,
 	})
 	if err != nil {
-		return "", fmt.Errorf(
+		return nil, fmt.Errorf(
 			"create impersonated token source: %w\n\n"+
 				"Make sure:\n"+
 				"1. You're authenticated: gcloud auth login or gcloud auth application-default login\n"+
 				"2. You have roles/iam.serviceAccountTokenCreator on %s",
 			err, serviceAccountEmail,
 		)
+	}
+	return ts, nil
+}
+
+// GenerateToken generates an IAP token by impersonating serviceAccountEmail.
+// It uses the caller's Application Default Credentials.
+func GenerateToken(ctx context.Context, clientID, serviceAccountEmail string) (string, error) {
+	ts, err := NewTokenSource(ctx, clientID, serviceAccountEmail)
+	if err != nil {
+		return "", err
 	}
 
 	token, err := ts.Token()
@@ -93,8 +104,11 @@ func GenerateToken(ctx context.Context, clientID, serviceAccountEmail string) (s
 // IAP-protected host. Returns an empty string if no default is known.
 func GetDefaultServiceAccount(host string) string {
 	hostname := strings.ToLower(host)
-	if strings.Contains(hostname, "argocd") {
-		return "argocd-iap-access@moz-fx-platform-mgmt-global.iam.gserviceaccount.com"
+	allowedHosts := map[string]string{"argocd": "argocd", "yardstick": "grafana"}
+	for host, sa := range allowedHosts {
+		if strings.Contains(hostname, host) {
+			return fmt.Sprintf("%s-iap-access@moz-fx-platform-mgmt-global.iam.gserviceaccount.com", sa)
+		}
 	}
 	return ""
 }
