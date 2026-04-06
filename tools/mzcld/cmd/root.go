@@ -7,6 +7,7 @@ import (
 	"github.com/mozilla/mozcloud/tools/mzcld/cmd/bastion"
 	"github.com/mozilla/mozcloud/tools/mzcld/cmd/chart"
 	"github.com/mozilla/mozcloud/tools/mzcld/cmd/claude"
+	"github.com/mozilla/mozcloud/tools/mzcld/cmd/gsm"
 	mzinit "github.com/mozilla/mozcloud/tools/mzcld/cmd/init"
 	"github.com/mozilla/mozcloud/tools/mzcld/cmd/iap"
 	"github.com/mozilla/mozcloud/tools/mzcld/cmd/jit"
@@ -54,4 +55,5 @@ func init() {
 	rootCmd.AddCommand(jit.Cmd)
 	rootCmd.AddCommand(iap.Cmd)
 	rootCmd.AddCommand(bastion.Cmd)
+	rootCmd.AddCommand(gsm.Cmd)
 }
