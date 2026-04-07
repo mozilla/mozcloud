@@ -13,14 +13,14 @@ import (
 
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List secrets or secret versions",
-	Long:  "Without --secret: list all secret names in a project.\nWith --secret: list all versions of that secret.",
+	Short: "List versions of a secret",
+	Long:  "Select a project and secret, then list all versions with state and creation time.",
 	RunE:  runList,
 }
 
 func init() {
 	listCmd.Flags().StringP("project", "p", "", "GCP project ID")
-	listCmd.Flags().StringP("secret", "s", "", "Secret name (list versions of this secret)")
+	listCmd.Flags().StringP("secret", "s", "", "Secret name")
 }
 
 func runList(cmd *cobra.Command, _ []string) error {
@@ -39,52 +39,31 @@ func runList(cmd *cobra.Command, _ []string) error {
 	}
 	defer client.Close() //nolint:errcheck
 
-	// If no secret specified, list all secret names.
-	if flagSecret == "" {
-		var names []string
-		_ = spinner.New().
-			Title("Loading secrets...").
-			Context(ctx).
-			Action(func() {
-				names, err = client.ListSecrets(ctx, projectID)
-			}).
-			Run()
-		if err != nil {
-			return err
-		}
-		if len(names) == 0 {
-			ui.Warn("No secrets found in project " + projectID)
-			return nil
-		}
-		ui.Header(fmt.Sprintf("Secrets in %s (%d)", projectID, len(names)))
-		for _, n := range names {
-			fmt.Println("  " + n)
-		}
-		cacheSelection(projectID, "")
-		return nil
+	secretName, _, err := selectSecret(ctx, client, projectID, flagSecret, false)
+	if err != nil {
+		return err
 	}
 
-	// List versions of a specific secret.
 	var versions []gsm.VersionInfo
 	_ = spinner.New().
 		Title("Loading versions...").
 		Context(ctx).
 		Action(func() {
-			versions, err = client.ListVersions(ctx, projectID, flagSecret)
+			versions, err = client.ListVersions(ctx, projectID, secretName)
 		}).
 		Run()
 	if err != nil {
 		return err
 	}
 	if len(versions) == 0 {
-		ui.Warn("No versions found for " + flagSecret)
+		ui.Warn("No versions found for " + secretName)
 		return nil
 	}
 
 	label := lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Width(12)
 	state := lipgloss.NewStyle().Width(12)
 
-	ui.Header(fmt.Sprintf("Versions of %s (%d)", flagSecret, len(versions)))
+	ui.Header(fmt.Sprintf("Versions of %s (%d)", secretName, len(versions)))
 	for _, v := range versions {
 		stateStyle := state
 		switch {
@@ -102,6 +81,6 @@ func runList(cmd *cobra.Command, _ []string) error {
 		)
 	}
 
-	cacheSelection(projectID, flagSecret)
+	cacheSelection(projectID, secretName)
 	return nil
 }

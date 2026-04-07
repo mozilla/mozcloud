@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"charm.land/huh/v2"
 	"charm.land/huh/v2/spinner"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/gsm"
@@ -15,15 +16,15 @@ import (
 var diffCmd = &cobra.Command{
 	Use:   "diff",
 	Short: "Diff two versions of a secret",
-	Long:  "Show a unified diff between two versions of a secret.",
+	Long:  "Show a unified diff between two versions of a secret.\nVersions can be selected interactively or via --a and --b flags.",
 	RunE:  runDiff,
 }
 
 func init() {
 	diffCmd.Flags().StringP("project", "p", "", "GCP project ID")
 	diffCmd.Flags().StringP("secret", "s", "", "Secret name")
-	diffCmd.Flags().StringP("a", "a", "", "First version to compare (required)")
-	diffCmd.Flags().StringP("b", "b", "", "Second version to compare (required)")
+	diffCmd.Flags().StringP("a", "a", "", "First version to compare")
+	diffCmd.Flags().StringP("b", "b", "", "Second version to compare")
 }
 
 func runDiff(cmd *cobra.Command, _ []string) error {
@@ -32,10 +33,6 @@ func runDiff(cmd *cobra.Command, _ []string) error {
 	flagSecret, _ := cmd.Flags().GetString("secret")
 	verA, _ := cmd.Flags().GetString("a")
 	verB, _ := cmd.Flags().GetString("b")
-
-	if verA == "" || verB == "" {
-		return fmt.Errorf("both --a and --b version flags are required")
-	}
 
 	projectID, err := selectProject(ctx, flagProject)
 	if err != nil {
@@ -51,6 +48,56 @@ func runDiff(cmd *cobra.Command, _ []string) error {
 	secretName, _, err := selectSecret(ctx, client, projectID, flagSecret, false)
 	if err != nil {
 		return err
+	}
+
+	// If versions not provided, let the user pick interactively.
+	if verA == "" || verB == "" {
+		var versions []gsm.VersionInfo
+		_ = spinner.New().
+			Title("Loading versions...").
+			Context(ctx).
+			Action(func() {
+				versions, err = client.ListVersions(ctx, projectID, secretName)
+			}).
+			Run()
+		if err != nil {
+			return err
+		}
+		if len(versions) < 2 {
+			return fmt.Errorf("need at least 2 versions to diff, found %d", len(versions))
+		}
+
+		opts := make([]huh.Option[string], len(versions))
+		for i, v := range versions {
+			label := fmt.Sprintf("v%s  %s  %s", v.Version, v.State, v.Created.Local().Format("2006-01-02 15:04"))
+			opts[i] = huh.NewOption(label, v.Version)
+		}
+
+		if verA == "" {
+			if err := huh.NewForm(
+				huh.NewGroup(
+					huh.NewSelect[string]().
+						Title("First version (older)").
+						Options(opts...).
+						Value(&verA),
+				),
+			).Run(); err != nil {
+				return err
+			}
+		}
+
+		if verB == "" {
+			if err := huh.NewForm(
+				huh.NewGroup(
+					huh.NewSelect[string]().
+						Title("Second version (newer)").
+						Options(opts...).
+						Value(&verB),
+				),
+			).Run(); err != nil {
+				return err
+			}
+		}
 	}
 
 	var dataA, dataB []byte
