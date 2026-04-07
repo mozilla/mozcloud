@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 
@@ -17,7 +18,12 @@ import (
 var editCmd = &cobra.Command{
 	Use:   "edit",
 	Short: "Edit a secret in $EDITOR",
-	Long:  "Fetch a secret, open it in your editor, validate JSON, and push a new version if changed.",
+	Long: `Fetch a secret, open it in your editor, validate JSON, and push a new version if changed.
+
+Accepts input on stdin for non-interactive use:
+
+  echo '{"key":"value"}' | mzcld gsm edit -p my-project -s my-secret
+  cat config.json | mzcld gsm edit -p my-project -s my-secret`,
 	RunE:  runEdit,
 }
 
@@ -51,6 +57,12 @@ func runEdit(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
+	// Check if stdin has data piped in.
+	stdinPiped := false
+	if fi, _ := os.Stdin.Stat(); fi != nil && (fi.Mode()&os.ModeCharDevice) == 0 {
+		stdinPiped = true
+	}
+
 	// Fetch current content or start with empty JSON.
 	var content []byte
 	if isNew {
@@ -68,34 +80,42 @@ func runEdit(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	// Write to temp file.
-	tmp, err := os.CreateTemp("", "mzcld-gsm-*.json")
-	if err != nil {
-		return fmt.Errorf("failed to create temp file: %w", err)
-	}
-	defer os.Remove(tmp.Name()) //nolint:errcheck
-
-	if err := os.Chmod(tmp.Name(), 0o600); err != nil {
-		return fmt.Errorf("failed to set temp file permissions: %w", err)
-	}
-	if _, err := tmp.Write(content); err != nil {
-		return fmt.Errorf("failed to write temp file: %w", err)
-	}
-	tmp.Close() //nolint:errcheck
-
 	originalSum := sha256sum(content)
 
-	// Detect if content is JSON for validation.
-	isJSON := json.Valid(content)
+	var newContent []byte
+	if stdinPiped {
+		// Read replacement content from stdin.
+		newContent, err = io.ReadAll(os.Stdin)
+		if err != nil {
+			return fmt.Errorf("failed to read stdin: %w", err)
+		}
+	} else {
+		// Interactive: write to temp file and open editor.
+		tmp, err := os.CreateTemp("", "mzcld-gsm-*.json")
+		if err != nil {
+			return fmt.Errorf("failed to create temp file: %w", err)
+		}
+		defer os.Remove(tmp.Name()) //nolint:errcheck
 
-	// Edit loop — validate JSON only if the original content was JSON.
-	if err := editFileLoop(tmp.Name(), isJSON); err != nil {
-		return err
-	}
+		if err := os.Chmod(tmp.Name(), 0o600); err != nil {
+			return fmt.Errorf("failed to set temp file permissions: %w", err)
+		}
+		if _, err := tmp.Write(content); err != nil {
+			return fmt.Errorf("failed to write temp file: %w", err)
+		}
+		tmp.Close() //nolint:errcheck
 
-	newContent, err := os.ReadFile(tmp.Name())
-	if err != nil {
-		return fmt.Errorf("failed to read edited file: %w", err)
+		// Detect if content is JSON for validation.
+		isJSON := json.Valid(content)
+
+		if err := editFileLoop(tmp.Name(), isJSON); err != nil {
+			return err
+		}
+
+		newContent, err = os.ReadFile(tmp.Name())
+		if err != nil {
+			return fmt.Errorf("failed to read edited file: %w", err)
+		}
 	}
 
 	newSum := sha256sum(newContent)
