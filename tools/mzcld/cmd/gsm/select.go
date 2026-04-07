@@ -4,17 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sort"
-	"strings"
 
-	resourcemanager "cloud.google.com/go/resourcemanager/apiv3"
-	"cloud.google.com/go/resourcemanager/apiv3/resourcemanagerpb"
 	"charm.land/huh/v2"
 	"charm.land/huh/v2/spinner"
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/cache"
+	"github.com/mozilla/mozcloud/tools/mzcld/internal/gcp"
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/gsm"
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/ui"
-	"google.golang.org/api/iterator"
 )
 
 const (
@@ -88,7 +84,7 @@ func selectProject(ctx context.Context, flagProject string) (string, error) {
 		Title("Loading projects...").
 		Context(ctx).
 		Action(func() {
-			allProjects, fetchErr = listAccessibleProjects(ctx)
+			allProjects, fetchErr = gcp.ListAccessibleProjects(ctx)
 		}).
 		Run()
 	if fetchErr != nil {
@@ -151,38 +147,10 @@ func selectProject(ctx context.Context, flagProject string) (string, error) {
 	return projectID, nil
 }
 
-// listAccessibleProjects returns project IDs the caller has access to,
-// sorted alphabetically.
-func listAccessibleProjects(ctx context.Context) ([]string, error) {
-	client, err := resourcemanager.NewProjectsClient(ctx, gsm.ClientOption())
-	if err != nil {
-		return nil, fmt.Errorf("failed to create resource manager client: %w", err)
-	}
-	defer client.Close() //nolint:errcheck
-
-	it := client.SearchProjects(ctx, &resourcemanagerpb.SearchProjectsRequest{})
-
-	var projects []string
-	for {
-		p, err := it.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return nil, fmt.Errorf("failed to list projects: %w", err)
-		}
-		if strings.EqualFold(p.State.String(), "ACTIVE") {
-			projects = append(projects, p.ProjectId)
-		}
-	}
-	sort.Strings(projects)
-	return projects, nil
-}
-
 // selectSecret interactively picks a secret from the project.
 // If flagSecret is non-empty it is returned directly.
 // When allowCreate is true, a "Create new..." option is prepended.
-func selectSecret(ctx context.Context, projectID, flagSecret string, allowCreate bool) (string, bool, error) {
+func selectSecret(ctx context.Context, client *gsm.Client, projectID, flagSecret string, allowCreate bool) (string, bool, error) {
 	if flagSecret != "" {
 		return flagSecret, false, nil
 	}
@@ -193,7 +161,7 @@ func selectSecret(ctx context.Context, projectID, flagSecret string, allowCreate
 		Title("Loading secrets...").
 		Context(ctx).
 		Action(func() {
-			names, secretErr = gsm.ListSecrets(ctx, projectID)
+			names, secretErr = client.ListSecrets(ctx, projectID)
 		}).
 		Run()
 	if secretErr != nil {

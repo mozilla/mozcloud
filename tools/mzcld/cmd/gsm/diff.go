@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/gsm"
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/ui"
+	"github.com/pmezard/go-difflib/difflib"
 	"github.com/spf13/cobra"
 )
 
@@ -41,7 +42,13 @@ func runDiff(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	secretName, _, err := selectSecret(ctx, projectID, flagSecret, false)
+	client, err := gsm.NewClient(ctx)
+	if err != nil {
+		return err
+	}
+	defer client.Close() //nolint:errcheck
+
+	secretName, _, err := selectSecret(ctx, client, projectID, flagSecret, false)
 	if err != nil {
 		return err
 	}
@@ -52,23 +59,29 @@ func runDiff(cmd *cobra.Command, _ []string) error {
 		Title(fmt.Sprintf("Fetching versions %s and %s...", verA, verB)).
 		Context(ctx).
 		Action(func() {
-			dataA, fetchErr = gsm.GetSecretVersion(ctx, projectID, secretName, verA)
+			dataA, fetchErr = client.GetSecretVersion(ctx, projectID, secretName, verA)
 			if fetchErr != nil {
 				return
 			}
-			dataB, fetchErr = gsm.GetSecretVersion(ctx, projectID, secretName, verB)
+			dataB, fetchErr = client.GetSecretVersion(ctx, projectID, secretName, verB)
 		}).
 		Run()
 	if fetchErr != nil {
 		return fetchErr
 	}
 
-	linesA := strings.Split(string(dataA), "\n")
-	linesB := strings.Split(string(dataB), "\n")
+	diff, err := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
+		A:        difflib.SplitLines(string(dataA)),
+		B:        difflib.SplitLines(string(dataB)),
+		FromFile: fmt.Sprintf("v%s", verA),
+		ToFile:   fmt.Sprintf("v%s", verB),
+		Context:  3,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to generate diff: %w", err)
+	}
 
-	diff := unifiedDiff(linesA, linesB, fmt.Sprintf("v%s", verA), fmt.Sprintf("v%s", verB))
-
-	if len(diff) == 0 {
+	if diff == "" {
 		ui.Info("No differences between versions.")
 		return nil
 	}
@@ -77,7 +90,7 @@ func runDiff(cmd *cobra.Command, _ []string) error {
 	del := lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
 	hdr := lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
 
-	for _, line := range diff {
+	for _, line := range strings.Split(strings.TrimSuffix(diff, "\n"), "\n") {
 		switch {
 		case strings.HasPrefix(line, "+++"), strings.HasPrefix(line, "---"), strings.HasPrefix(line, "@@"):
 			fmt.Println(hdr.Render(line))
@@ -92,58 +105,4 @@ func runDiff(cmd *cobra.Command, _ []string) error {
 
 	cacheSelection(projectID, secretName)
 	return nil
-}
-
-// unifiedDiff produces a simple unified diff between two sets of lines.
-func unifiedDiff(a, b []string, nameA, nameB string) []string {
-	// Use a simple LCS-based diff.
-	lcs := lcsTable(a, b)
-
-	var result []string
-	result = append(result, fmt.Sprintf("--- %s", nameA))
-	result = append(result, fmt.Sprintf("+++ %s", nameB))
-
-	i, j := len(a), len(b)
-	var patch []string
-	for i > 0 || j > 0 {
-		if i > 0 && j > 0 && a[i-1] == b[j-1] {
-			patch = append(patch, " "+a[i-1])
-			i--
-			j--
-		} else if j > 0 && (i == 0 || lcs[i][j-1] >= lcs[i-1][j]) {
-			patch = append(patch, "+"+b[j-1])
-			j--
-		} else {
-			patch = append(patch, "-"+a[i-1])
-			i--
-		}
-	}
-
-	// Reverse the patch (we built it bottom-up).
-	for left, right := 0, len(patch)-1; left < right; left, right = left+1, right-1 {
-		patch[left], patch[right] = patch[right], patch[left]
-	}
-
-	result = append(result, patch...)
-	return result
-}
-
-func lcsTable(a, b []string) [][]int {
-	m, n := len(a), len(b)
-	table := make([][]int, m+1)
-	for i := range table {
-		table[i] = make([]int, n+1)
-	}
-	for i := 1; i <= m; i++ {
-		for j := 1; j <= n; j++ {
-			if a[i-1] == b[j-1] {
-				table[i][j] = table[i-1][j-1] + 1
-			} else if table[i-1][j] >= table[i][j-1] {
-				table[i][j] = table[i-1][j]
-			} else {
-				table[i][j] = table[i][j-1]
-			}
-		}
-	}
-	return table
 }

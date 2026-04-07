@@ -39,8 +39,14 @@ func runEdit(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
+	client, err := gsm.NewClient(ctx)
+	if err != nil {
+		return err
+	}
+	defer client.Close() //nolint:errcheck
+
 	allowCreate, _ := cmd.Flags().GetBool("create")
-	secretName, isNew, err := selectSecret(ctx, projectID, flagSecret, allowCreate)
+	secretName, isNew, err := selectSecret(ctx, client, projectID, flagSecret, allowCreate)
 	if err != nil {
 		return err
 	}
@@ -54,7 +60,7 @@ func runEdit(cmd *cobra.Command, _ []string) error {
 			Title("Fetching secret...").
 			Context(ctx).
 			Action(func() {
-				content, err = gsm.GetSecretVersion(ctx, projectID, secretName, flagVersion)
+				content, err = client.GetSecretVersion(ctx, projectID, secretName, flagVersion)
 			}).
 			Run()
 		if err != nil {
@@ -79,8 +85,11 @@ func runEdit(cmd *cobra.Command, _ []string) error {
 
 	originalSum := sha256sum(content)
 
-	// Edit loop with JSON validation.
-	if err := editFileLoop(tmp.Name()); err != nil {
+	// Detect if content is JSON for validation.
+	isJSON := json.Valid(content)
+
+	// Edit loop — validate JSON only if the original content was JSON.
+	if err := editFileLoop(tmp.Name(), isJSON); err != nil {
 		return err
 	}
 
@@ -101,12 +110,12 @@ func runEdit(cmd *cobra.Command, _ []string) error {
 		Context(ctx).
 		Action(func() {
 			if isNew {
-				err = gsm.CreateSecret(ctx, projectID, secretName)
+				err = client.CreateSecret(ctx, projectID, secretName)
 				if err != nil {
 					return
 				}
 			}
-			err = gsm.AddSecretVersion(ctx, projectID, secretName, newContent)
+			err = client.AddSecretVersion(ctx, projectID, secretName, newContent)
 		}).
 		Run()
 	if err != nil {
@@ -118,8 +127,9 @@ func runEdit(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-// editFileLoop opens the file in $EDITOR and validates JSON, looping on failure.
-func editFileLoop(path string) error {
+// editFileLoop opens the file in $EDITOR. If validateJSON is true, it validates
+// the content as JSON after each edit and loops on failure.
+func editFileLoop(path string, validateJSON bool) error {
 	editor := os.Getenv("EDITOR")
 	if editor == "" {
 		editor = "vi"
@@ -132,6 +142,10 @@ func editFileLoop(path string) error {
 		c.Stderr = os.Stderr
 		if err := c.Run(); err != nil {
 			return fmt.Errorf("editor exited with error: %w", err)
+		}
+
+		if !validateJSON {
+			return nil
 		}
 
 		data, err := os.ReadFile(path)

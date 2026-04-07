@@ -15,6 +15,8 @@ import (
 	"golang.org/x/oauth2"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // GcloudTokenSource delegates token generation to the gcloud CLI,
@@ -42,16 +44,29 @@ type VersionInfo struct {
 	Created time.Time
 }
 
-// ListSecrets returns the short names of all secrets in a project.
-func ListSecrets(ctx context.Context, projectID string) ([]string, error) {
-	client, err := secretmanager.NewClient(ctx, ClientOption())
+// Client wraps a Secret Manager client for reuse across operations.
+type Client struct {
+	sm *secretmanager.Client
+}
+
+// NewClient creates a new GSM client using gcloud token auth.
+func NewClient(ctx context.Context) (*Client, error) {
+	sm, err := secretmanager.NewClient(ctx, ClientOption())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create secretmanager client: %w", err)
 	}
-	defer client.Close() //nolint:errcheck
+	return &Client{sm: sm}, nil
+}
 
+// Close releases resources held by the client.
+func (c *Client) Close() error {
+	return c.sm.Close()
+}
+
+// ListSecrets returns the short names of all secrets in a project.
+func (c *Client) ListSecrets(ctx context.Context, projectID string) ([]string, error) {
 	parent := fmt.Sprintf("projects/%s", projectID)
-	it := client.ListSecrets(ctx, &secretmanagerpb.ListSecretsRequest{Parent: parent})
+	it := c.sm.ListSecrets(ctx, &secretmanagerpb.ListSecretsRequest{Parent: parent})
 
 	var names []string
 	for {
@@ -62,7 +77,6 @@ func ListSecrets(ctx context.Context, projectID string) ([]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to list secrets: %w", err)
 		}
-		// name is "projects/PROJECT/secrets/NAME" — extract the short name
 		parts := strings.Split(s.Name, "/")
 		names = append(names, parts[len(parts)-1])
 	}
@@ -72,15 +86,9 @@ func ListSecrets(ctx context.Context, projectID string) ([]string, error) {
 
 // GetSecretVersion returns the payload bytes for a specific version of a secret.
 // Pass "latest" as version to get the most recent version.
-func GetSecretVersion(ctx context.Context, projectID, secretName, version string) ([]byte, error) {
-	client, err := secretmanager.NewClient(ctx, ClientOption())
-	if err != nil {
-		return nil, fmt.Errorf("failed to create secretmanager client: %w", err)
-	}
-	defer client.Close() //nolint:errcheck
-
+func (c *Client) GetSecretVersion(ctx context.Context, projectID, secretName, version string) ([]byte, error) {
 	name := fmt.Sprintf("projects/%s/secrets/%s/versions/%s", projectID, secretName, version)
-	resp, err := client.AccessSecretVersion(ctx, &secretmanagerpb.AccessSecretVersionRequest{Name: name})
+	resp, err := c.sm.AccessSecretVersion(ctx, &secretmanagerpb.AccessSecretVersionRequest{Name: name})
 	if err != nil {
 		return nil, fmt.Errorf("failed to access secret version: %w", err)
 	}
@@ -88,15 +96,9 @@ func GetSecretVersion(ctx context.Context, projectID, secretName, version string
 }
 
 // AddSecretVersion adds a new version with the given payload data.
-func AddSecretVersion(ctx context.Context, projectID, secretName string, data []byte) error {
-	client, err := secretmanager.NewClient(ctx, ClientOption())
-	if err != nil {
-		return fmt.Errorf("failed to create secretmanager client: %w", err)
-	}
-	defer client.Close() //nolint:errcheck
-
+func (c *Client) AddSecretVersion(ctx context.Context, projectID, secretName string, data []byte) error {
 	parent := fmt.Sprintf("projects/%s/secrets/%s", projectID, secretName)
-	_, err = client.AddSecretVersion(ctx, &secretmanagerpb.AddSecretVersionRequest{
+	_, err := c.sm.AddSecretVersion(ctx, &secretmanagerpb.AddSecretVersionRequest{
 		Parent:  parent,
 		Payload: &secretmanagerpb.SecretPayload{Data: data},
 	})
@@ -107,15 +109,9 @@ func AddSecretVersion(ctx context.Context, projectID, secretName string, data []
 }
 
 // CreateSecret creates a new secret with automatic replication.
-func CreateSecret(ctx context.Context, projectID, secretName string) error {
-	client, err := secretmanager.NewClient(ctx, ClientOption())
-	if err != nil {
-		return fmt.Errorf("failed to create secretmanager client: %w", err)
-	}
-	defer client.Close() //nolint:errcheck
-
+func (c *Client) CreateSecret(ctx context.Context, projectID, secretName string) error {
 	parent := fmt.Sprintf("projects/%s", projectID)
-	_, err = client.CreateSecret(ctx, &secretmanagerpb.CreateSecretRequest{
+	_, err := c.sm.CreateSecret(ctx, &secretmanagerpb.CreateSecretRequest{
 		Parent:   parent,
 		SecretId: secretName,
 		Secret: &secretmanagerpb.Secret{
@@ -133,15 +129,9 @@ func CreateSecret(ctx context.Context, projectID, secretName string) error {
 }
 
 // ListVersions returns metadata for all versions of a secret (newest first).
-func ListVersions(ctx context.Context, projectID, secretName string) ([]VersionInfo, error) {
-	client, err := secretmanager.NewClient(ctx, ClientOption())
-	if err != nil {
-		return nil, fmt.Errorf("failed to create secretmanager client: %w", err)
-	}
-	defer client.Close() //nolint:errcheck
-
+func (c *Client) ListVersions(ctx context.Context, projectID, secretName string) ([]VersionInfo, error) {
 	parent := fmt.Sprintf("projects/%s/secrets/%s", projectID, secretName)
-	it := client.ListSecretVersions(ctx, &secretmanagerpb.ListSecretVersionsRequest{Parent: parent})
+	it := c.sm.ListSecretVersions(ctx, &secretmanagerpb.ListSecretVersionsRequest{Parent: parent})
 
 	var versions []VersionInfo
 	for {
@@ -179,17 +169,11 @@ func ListVersions(ctx context.Context, projectID, secretName string) ([]VersionI
 }
 
 // SecretExists checks whether a secret with the given name exists in the project.
-func SecretExists(ctx context.Context, projectID, secretName string) (bool, error) {
-	client, err := secretmanager.NewClient(ctx, ClientOption())
-	if err != nil {
-		return false, fmt.Errorf("failed to create secretmanager client: %w", err)
-	}
-	defer client.Close() //nolint:errcheck
-
+func (c *Client) SecretExists(ctx context.Context, projectID, secretName string) (bool, error) {
 	name := fmt.Sprintf("projects/%s/secrets/%s", projectID, secretName)
-	_, err = client.GetSecret(ctx, &secretmanagerpb.GetSecretRequest{Name: name})
+	_, err := c.sm.GetSecret(ctx, &secretmanagerpb.GetSecretRequest{Name: name})
 	if err != nil {
-		if strings.Contains(err.Error(), "NotFound") {
+		if st, ok := status.FromError(err); ok && st.Code() == codes.NotFound {
 			return false, nil
 		}
 		return false, fmt.Errorf("failed to check secret existence: %w", err)

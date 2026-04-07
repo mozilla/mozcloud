@@ -40,7 +40,7 @@ type BastionCache struct {
 	LastAccess string `json:"last_access"`
 }
 
-// Load reads the cached bastion selection from ~/.mops/bastion-cache.json.
+// Load reads the cached bastion selection from ~/.mzcld/bastion-cache.json.
 // Returns nil, nil if the file does not yet exist.
 func Load() (*BastionCache, error) {
 	if !cache.Exists(cacheFileName) {
@@ -57,7 +57,7 @@ func Load() (*BastionCache, error) {
 	return &bc, nil
 }
 
-// Save writes bc to ~/.mops/bastion-cache.json.
+// Save writes bc to ~/.mzcld/bastion-cache.json.
 func Save(bc *BastionCache) error {
 	data, err := json.Marshal(bc)
 	if err != nil {

@@ -170,7 +170,9 @@ func runProxy(ctx context.Context, host string, port int, ts oauth2.TokenSource)
 
 	go func() {
 		<-ctx.Done()
-		srv.Shutdown(context.Background()) //nolint:errcheck
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		srv.Shutdown(shutdownCtx) //nolint:errcheck
 	}()
 
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {

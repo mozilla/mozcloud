@@ -33,6 +33,12 @@ func runList(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
+	client, err := gsm.NewClient(ctx)
+	if err != nil {
+		return err
+	}
+	defer client.Close() //nolint:errcheck
+
 	// If no secret specified, list all secret names.
 	if flagSecret == "" {
 		var names []string
@@ -40,7 +46,7 @@ func runList(cmd *cobra.Command, _ []string) error {
 			Title("Loading secrets...").
 			Context(ctx).
 			Action(func() {
-				names, err = gsm.ListSecrets(ctx, projectID)
+				names, err = client.ListSecrets(ctx, projectID)
 			}).
 			Run()
 		if err != nil {
@@ -64,7 +70,7 @@ func runList(cmd *cobra.Command, _ []string) error {
 		Title("Loading versions...").
 		Context(ctx).
 		Action(func() {
-			versions, err = gsm.ListVersions(ctx, projectID, flagSecret)
+			versions, err = client.ListVersions(ctx, projectID, flagSecret)
 		}).
 		Run()
 	if err != nil {

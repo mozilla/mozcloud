@@ -33,7 +33,13 @@ func runView(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	secretName, _, err := selectSecret(ctx, projectID, flagSecret, false)
+	client, err := gsm.NewClient(ctx)
+	if err != nil {
+		return err
+	}
+	defer client.Close() //nolint:errcheck
+
+	secretName, _, err := selectSecret(ctx, client, projectID, flagSecret, false)
 	if err != nil {
 		return err
 	}
@@ -43,7 +49,7 @@ func runView(cmd *cobra.Command, _ []string) error {
 		Title("Fetching secret...").
 		Context(ctx).
 		Action(func() {
-			data, err = gsm.GetSecretVersion(ctx, projectID, secretName, flagVersion)
+			data, err = client.GetSecretVersion(ctx, projectID, secretName, flagVersion)
 		}).
 		Run()
 	if err != nil {
