@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"charm.land/huh/v2/spinner"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/gsm"
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/ui"
@@ -45,13 +44,9 @@ func runList(cmd *cobra.Command, _ []string) error {
 	}
 
 	var versions []gsm.VersionInfo
-	_ = spinner.New().
-		Title("Loading versions...").
-		Context(ctx).
-		Action(func() {
-			versions, err = client.ListVersions(ctx, projectID, secretName)
-		}).
-		Run()
+	runWithSpinner(ctx, "Loading versions...", func() {
+		versions, err = client.ListVersions(ctx, projectID, secretName)
+	})
 	if err != nil {
 		return err
 	}

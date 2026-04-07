@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"charm.land/huh/v2"
-	"charm.land/huh/v2/spinner"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/gsm"
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/ui"
@@ -53,13 +52,9 @@ func runDiff(cmd *cobra.Command, _ []string) error {
 	// If versions not provided, let the user pick interactively.
 	if verA == "" || verB == "" {
 		var versions []gsm.VersionInfo
-		_ = spinner.New().
-			Title("Loading versions...").
-			Context(ctx).
-			Action(func() {
-				versions, err = client.ListVersions(ctx, projectID, secretName)
-			}).
-			Run()
+		runWithSpinner(ctx, "Loading versions...", func() {
+			versions, err = client.ListVersions(ctx, projectID, secretName)
+		})
 		if err != nil {
 			return err
 		}
@@ -102,17 +97,13 @@ func runDiff(cmd *cobra.Command, _ []string) error {
 
 	var dataA, dataB []byte
 	var fetchErr error
-	_ = spinner.New().
-		Title(fmt.Sprintf("Fetching versions %s and %s...", verA, verB)).
-		Context(ctx).
-		Action(func() {
-			dataA, fetchErr = client.GetSecretVersion(ctx, projectID, secretName, verA)
-			if fetchErr != nil {
-				return
-			}
-			dataB, fetchErr = client.GetSecretVersion(ctx, projectID, secretName, verB)
-		}).
-		Run()
+	runWithSpinner(ctx, fmt.Sprintf("Fetching versions %s and %s...", verA, verB), func() {
+		dataA, fetchErr = client.GetSecretVersion(ctx, projectID, secretName, verA)
+		if fetchErr != nil {
+			return
+		}
+		dataB, fetchErr = client.GetSecretVersion(ctx, projectID, secretName, verB)
+	})
 	if fetchErr != nil {
 		return fetchErr
 	}

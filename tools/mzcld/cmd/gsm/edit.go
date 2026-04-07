@@ -9,7 +9,6 @@ import (
 	"os/exec"
 
 	"charm.land/huh/v2"
-	"charm.land/huh/v2/spinner"
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/gsm"
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/ui"
 	"github.com/spf13/cobra"
@@ -40,6 +39,19 @@ func runEdit(cmd *cobra.Command, _ []string) error {
 	flagSecret, _ := cmd.Flags().GetString("secret")
 	flagVersion, _ := cmd.Flags().GetString("version")
 
+	// Check if stdin has data piped in and read it immediately,
+	// blocking until the upstream process finishes.
+	stdinPiped := false
+	var stdinData []byte
+	if fi, _ := os.Stdin.Stat(); fi != nil && (fi.Mode()&os.ModeCharDevice) == 0 {
+		stdinPiped = true
+		var err error
+		stdinData, err = io.ReadAll(os.Stdin)
+		if err != nil {
+			return fmt.Errorf("failed to read stdin: %w", err)
+		}
+	}
+
 	projectID, err := selectProject(ctx, flagProject)
 	if err != nil {
 		return err
@@ -57,24 +69,14 @@ func runEdit(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	// Check if stdin has data piped in.
-	stdinPiped := false
-	if fi, _ := os.Stdin.Stat(); fi != nil && (fi.Mode()&os.ModeCharDevice) == 0 {
-		stdinPiped = true
-	}
-
 	// Fetch current content or start with empty JSON.
 	var content []byte
 	if isNew {
 		content = []byte("{}\n")
 	} else {
-		_ = spinner.New().
-			Title("Fetching secret...").
-			Context(ctx).
-			Action(func() {
-				content, err = client.GetSecretVersion(ctx, projectID, secretName, flagVersion)
-			}).
-			Run()
+		runWithSpinner(ctx, "Fetching secret...", func() {
+			content, err = client.GetSecretVersion(ctx, projectID, secretName, flagVersion)
+		})
 		if err != nil {
 			return err
 		}
@@ -84,11 +86,7 @@ func runEdit(cmd *cobra.Command, _ []string) error {
 
 	var newContent []byte
 	if stdinPiped {
-		// Read replacement content from stdin.
-		newContent, err = io.ReadAll(os.Stdin)
-		if err != nil {
-			return fmt.Errorf("failed to read stdin: %w", err)
-		}
+		newContent = stdinData
 	} else {
 		// Interactive: write to temp file and open editor.
 		tmp, err := os.CreateTemp("", "mzcld-gsm-*.json")
@@ -125,19 +123,15 @@ func runEdit(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Create the secret if it's new, then push the version.
-	_ = spinner.New().
-		Title("Pushing new version...").
-		Context(ctx).
-		Action(func() {
-			if isNew {
-				err = client.CreateSecret(ctx, projectID, secretName)
-				if err != nil {
-					return
-				}
+	runWithSpinner(ctx, "Pushing new version...", func() {
+		if isNew {
+			err = client.CreateSecret(ctx, projectID, secretName)
+			if err != nil {
+				return
 			}
-			err = client.AddSecretVersion(ctx, projectID, secretName, newContent)
-		}).
-		Run()
+		}
+		err = client.AddSecretVersion(ctx, projectID, secretName, newContent)
+	})
 	if err != nil {
 		return err
 	}

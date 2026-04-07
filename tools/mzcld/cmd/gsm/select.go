@@ -13,6 +13,19 @@ import (
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/ui"
 )
 
+// runWithSpinner runs action with a spinner title, or silently if stdout is piped.
+func runWithSpinner(ctx context.Context, title string, action func()) {
+	if ui.IsPiped() {
+		action()
+		return
+	}
+	_ = spinner.New().
+		Title(title).
+		Context(ctx).
+		Action(action).
+		Run()
+}
+
 const (
 	gsmCacheFile  = "gsm-cache.json"
 	maxRecentProj = 10
@@ -80,13 +93,9 @@ func selectProject(ctx context.Context, flagProject string) (string, error) {
 	// Build the option list: recents first (marked), then all accessible projects.
 	var allProjects []string
 	var fetchErr error
-	_ = spinner.New().
-		Title("Loading projects...").
-		Context(ctx).
-		Action(func() {
-			allProjects, fetchErr = gcp.ListAccessibleProjects(ctx)
-		}).
-		Run()
+	runWithSpinner(ctx, "Loading projects...", func() {
+		allProjects, fetchErr = gcp.ListAccessibleProjects(ctx)
+	})
 	if fetchErr != nil {
 		ui.Warn("Could not list projects: " + fetchErr.Error())
 	}
@@ -157,13 +166,9 @@ func selectSecret(ctx context.Context, client *gsm.Client, projectID, flagSecret
 
 	var names []string
 	var secretErr error
-	_ = spinner.New().
-		Title("Loading secrets...").
-		Context(ctx).
-		Action(func() {
-			names, secretErr = client.ListSecrets(ctx, projectID)
-		}).
-		Run()
+	runWithSpinner(ctx, "Loading secrets...", func() {
+		names, secretErr = client.ListSecrets(ctx, projectID)
+	})
 	if secretErr != nil {
 		return "", false, secretErr
 	}

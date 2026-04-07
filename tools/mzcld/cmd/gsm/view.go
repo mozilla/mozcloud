@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"charm.land/huh/v2/spinner"
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/gsm"
 	"github.com/spf13/cobra"
 )
@@ -45,13 +44,9 @@ func runView(cmd *cobra.Command, _ []string) error {
 	}
 
 	var data []byte
-	_ = spinner.New().
-		Title("Fetching secret...").
-		Context(ctx).
-		Action(func() {
-			data, err = client.GetSecretVersion(ctx, projectID, secretName, flagVersion)
-		}).
-		Run()
+	runWithSpinner(ctx, "Fetching secret...", func() {
+		data, err = client.GetSecretVersion(ctx, projectID, secretName, flagVersion)
+	})
 	if err != nil {
 		return err
 	}

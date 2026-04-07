@@ -9,7 +9,18 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-var debug bool
+var (
+	debug bool
+	// IsPiped reports whether stdout is piped (not a terminal).
+	// When true, spinners and TUI elements should be suppressed.
+	IsPiped = func() bool {
+		fi, err := os.Stdout.Stat()
+		if err != nil {
+			return false
+		}
+		return (fi.Mode() & os.ModeCharDevice) == 0
+	}
+)
 
 // SetDebug enables or disables debug output.
 func SetDebug(v bool) { debug = v }
