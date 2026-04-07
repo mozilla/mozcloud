@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"charm.land/huh/v2/spinner"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/gsm"
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/ui"
@@ -45,14 +46,21 @@ func runDiff(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	ui.Info(fmt.Sprintf("Fetching versions %s and %s...", verA, verB))
-	dataA, err := gsm.GetSecretVersion(ctx, projectID, secretName, verA)
-	if err != nil {
-		return fmt.Errorf("failed to fetch version %s: %w", verA, err)
-	}
-	dataB, err := gsm.GetSecretVersion(ctx, projectID, secretName, verB)
-	if err != nil {
-		return fmt.Errorf("failed to fetch version %s: %w", verB, err)
+	var dataA, dataB []byte
+	var fetchErr error
+	_ = spinner.New().
+		Title(fmt.Sprintf("Fetching versions %s and %s...", verA, verB)).
+		Context(ctx).
+		Action(func() {
+			dataA, fetchErr = gsm.GetSecretVersion(ctx, projectID, secretName, verA)
+			if fetchErr != nil {
+				return
+			}
+			dataB, fetchErr = gsm.GetSecretVersion(ctx, projectID, secretName, verB)
+		}).
+		Run()
+	if fetchErr != nil {
+		return fetchErr
 	}
 
 	linesA := strings.Split(string(dataA), "\n")
@@ -82,7 +90,7 @@ func runDiff(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	saveGSMCache(gsmCache{ProjectID: projectID, Secret: secretName})
+	cacheSelection(projectID, secretName)
 	return nil
 }
 

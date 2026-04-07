@@ -62,6 +62,18 @@ func Debug(msg string) {
 	}
 }
 
+// Status prints a transient status line to stderr that is cleared on the next
+// call to ClearStatus or when a TUI form takes over the terminal. Safe for
+// piping — never touches stdout.
+func Status(msg string) {
+	fmt.Fprintf(os.Stderr, "\r\033[K%s", gray.Render("  ⠋ "+msg))
+}
+
+// ClearStatus erases the current status line on stderr.
+func ClearStatus() {
+	fmt.Fprintf(os.Stderr, "\r\033[K")
+}
+
 // CheckResult represents the outcome of a single preflight check.
 type CheckResult struct {
 	Name    string

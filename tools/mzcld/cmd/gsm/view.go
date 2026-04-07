@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"charm.land/huh/v2/spinner"
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/gsm"
 	"github.com/spf13/cobra"
 )
@@ -37,7 +38,14 @@ func runView(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	data, err := gsm.GetSecretVersion(ctx, projectID, secretName, flagVersion)
+	var data []byte
+	_ = spinner.New().
+		Title("Fetching secret...").
+		Context(ctx).
+		Action(func() {
+			data, err = gsm.GetSecretVersion(ctx, projectID, secretName, flagVersion)
+		}).
+		Run()
 	if err != nil {
 		return err
 	}
@@ -48,12 +56,12 @@ func runView(cmd *cobra.Command, _ []string) error {
 		formatted, err := json.MarshalIndent(pretty, "", "  ")
 		if err == nil {
 			fmt.Println(string(formatted))
-			saveGSMCache(gsmCache{ProjectID: projectID, Secret: secretName})
+			cacheSelection(projectID, secretName)
 			return nil
 		}
 	}
 
 	fmt.Print(string(data))
-	saveGSMCache(gsmCache{ProjectID: projectID, Secret: secretName})
+	cacheSelection(projectID, secretName)
 	return nil
 }

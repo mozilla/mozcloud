@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/huh"
+	"charm.land/huh/v2"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/gcp"
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/pam"

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"charm.land/huh/v2/spinner"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/gsm"
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/ui"
@@ -34,8 +35,14 @@ func runList(cmd *cobra.Command, _ []string) error {
 
 	// If no secret specified, list all secret names.
 	if flagSecret == "" {
-		ui.Info("Loading secrets...")
-		names, err := gsm.ListSecrets(ctx, projectID)
+		var names []string
+		_ = spinner.New().
+			Title("Loading secrets...").
+			Context(ctx).
+			Action(func() {
+				names, err = gsm.ListSecrets(ctx, projectID)
+			}).
+			Run()
 		if err != nil {
 			return err
 		}
@@ -47,13 +54,19 @@ func runList(cmd *cobra.Command, _ []string) error {
 		for _, n := range names {
 			fmt.Println("  " + n)
 		}
-		saveGSMCache(gsmCache{ProjectID: projectID})
+		cacheSelection(projectID, "")
 		return nil
 	}
 
 	// List versions of a specific secret.
-	ui.Info("Loading versions...")
-	versions, err := gsm.ListVersions(ctx, projectID, flagSecret)
+	var versions []gsm.VersionInfo
+	_ = spinner.New().
+		Title("Loading versions...").
+		Context(ctx).
+		Action(func() {
+			versions, err = gsm.ListVersions(ctx, projectID, flagSecret)
+		}).
+		Run()
 	if err != nil {
 		return err
 	}
@@ -83,6 +96,6 @@ func runList(cmd *cobra.Command, _ []string) error {
 		)
 	}
 
-	saveGSMCache(gsmCache{ProjectID: projectID, Secret: flagSecret})
+	cacheSelection(projectID, flagSecret)
 	return nil
 }

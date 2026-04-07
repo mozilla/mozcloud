@@ -7,7 +7,8 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/charmbracelet/huh"
+	"charm.land/huh/v2"
+	"charm.land/huh/v2/spinner"
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/gsm"
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/ui"
 	"github.com/spf13/cobra"
@@ -24,6 +25,7 @@ func init() {
 	editCmd.Flags().StringP("project", "p", "", "GCP project ID")
 	editCmd.Flags().StringP("secret", "s", "", "Secret name")
 	editCmd.Flags().StringP("version", "v", "latest", "Version to edit (default: latest)")
+	editCmd.Flags().Bool("create", false, "Allow creating a new secret")
 }
 
 func runEdit(cmd *cobra.Command, _ []string) error {
@@ -37,7 +39,8 @@ func runEdit(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	secretName, isNew, err := selectSecret(ctx, projectID, flagSecret, true)
+	allowCreate, _ := cmd.Flags().GetBool("create")
+	secretName, isNew, err := selectSecret(ctx, projectID, flagSecret, allowCreate)
 	if err != nil {
 		return err
 	}
@@ -47,7 +50,13 @@ func runEdit(cmd *cobra.Command, _ []string) error {
 	if isNew {
 		content = []byte("{}\n")
 	} else {
-		content, err = gsm.GetSecretVersion(ctx, projectID, secretName, flagVersion)
+		_ = spinner.New().
+			Title("Fetching secret...").
+			Context(ctx).
+			Action(func() {
+				content, err = gsm.GetSecretVersion(ctx, projectID, secretName, flagVersion)
+			}).
+			Run()
 		if err != nil {
 			return err
 		}
@@ -84,19 +93,24 @@ func runEdit(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Create the secret if it's new, then push the version.
-	if isNew {
-		ui.Info("Creating secret " + secretName + "...")
-		if err := gsm.CreateSecret(ctx, projectID, secretName); err != nil {
-			return err
-		}
-	}
-
-	ui.Info("Pushing new version...")
-	if err := gsm.AddSecretVersion(ctx, projectID, secretName, newContent); err != nil {
+	_ = spinner.New().
+		Title("Pushing new version...").
+		Context(ctx).
+		Action(func() {
+			if isNew {
+				err = gsm.CreateSecret(ctx, projectID, secretName)
+				if err != nil {
+					return
+				}
+			}
+			err = gsm.AddSecretVersion(ctx, projectID, secretName, newContent)
+		}).
+		Run()
+	if err != nil {
 		return err
 	}
 
-	saveGSMCache(gsmCache{ProjectID: projectID, Secret: secretName})
+	cacheSelection(projectID, secretName)
 	ui.Success(fmt.Sprintf("New version of %s pushed.", secretName))
 	return nil
 }

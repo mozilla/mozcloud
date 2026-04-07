@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"cloud.google.com/go/storage"
-	"github.com/charmbracelet/huh"
+	"charm.land/huh/v2"
 	"golang.org/x/oauth2/google"
 
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/cache"

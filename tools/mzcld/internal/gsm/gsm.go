@@ -4,14 +4,34 @@ package gsm
 import (
 	"context"
 	"fmt"
+	"os/exec"
 	"sort"
 	"strings"
 	"time"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
+	"golang.org/x/oauth2"
 	"google.golang.org/api/iterator"
+	"google.golang.org/api/option"
 )
+
+// GcloudTokenSource delegates token generation to the gcloud CLI,
+// which handles RAPT and security-key reauthentication transparently.
+type GcloudTokenSource struct{}
+
+func (g *GcloudTokenSource) Token() (*oauth2.Token, error) {
+	out, err := exec.Command("gcloud", "auth", "print-access-token").Output()
+	if err != nil {
+		return nil, fmt.Errorf("gcloud auth print-access-token failed: %w", err)
+	}
+	return &oauth2.Token{AccessToken: strings.TrimSpace(string(out))}, nil
+}
+
+// ClientOption returns a google API client option that uses gcloud for auth.
+func ClientOption() option.ClientOption {
+	return option.WithTokenSource(&GcloudTokenSource{})
+}
 
 // VersionInfo holds metadata about a single secret version.
 type VersionInfo struct {
@@ -23,7 +43,7 @@ type VersionInfo struct {
 
 // ListSecrets returns the short names of all secrets in a project.
 func ListSecrets(ctx context.Context, projectID string) ([]string, error) {
-	client, err := secretmanager.NewClient(ctx)
+	client, err := secretmanager.NewClient(ctx, ClientOption())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create secretmanager client: %w", err)
 	}
@@ -52,7 +72,7 @@ func ListSecrets(ctx context.Context, projectID string) ([]string, error) {
 // GetSecretVersion returns the payload bytes for a specific version of a secret.
 // Pass "latest" as version to get the most recent version.
 func GetSecretVersion(ctx context.Context, projectID, secretName, version string) ([]byte, error) {
-	client, err := secretmanager.NewClient(ctx)
+	client, err := secretmanager.NewClient(ctx, ClientOption())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create secretmanager client: %w", err)
 	}
@@ -68,7 +88,7 @@ func GetSecretVersion(ctx context.Context, projectID, secretName, version string
 
 // AddSecretVersion adds a new version with the given payload data.
 func AddSecretVersion(ctx context.Context, projectID, secretName string, data []byte) error {
-	client, err := secretmanager.NewClient(ctx)
+	client, err := secretmanager.NewClient(ctx, ClientOption())
 	if err != nil {
 		return fmt.Errorf("failed to create secretmanager client: %w", err)
 	}
@@ -87,7 +107,7 @@ func AddSecretVersion(ctx context.Context, projectID, secretName string, data []
 
 // CreateSecret creates a new secret with automatic replication.
 func CreateSecret(ctx context.Context, projectID, secretName string) error {
-	client, err := secretmanager.NewClient(ctx)
+	client, err := secretmanager.NewClient(ctx, ClientOption())
 	if err != nil {
 		return fmt.Errorf("failed to create secretmanager client: %w", err)
 	}
@@ -113,7 +133,7 @@ func CreateSecret(ctx context.Context, projectID, secretName string) error {
 
 // ListVersions returns metadata for all versions of a secret (newest first).
 func ListVersions(ctx context.Context, projectID, secretName string) ([]VersionInfo, error) {
-	client, err := secretmanager.NewClient(ctx)
+	client, err := secretmanager.NewClient(ctx, ClientOption())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create secretmanager client: %w", err)
 	}
@@ -157,7 +177,7 @@ func ListVersions(ctx context.Context, projectID, secretName string) ([]VersionI
 
 // SecretExists checks whether a secret with the given name exists in the project.
 func SecretExists(ctx context.Context, projectID, secretName string) (bool, error) {
-	client, err := secretmanager.NewClient(ctx)
+	client, err := secretmanager.NewClient(ctx, ClientOption())
 	if err != nil {
 		return false, fmt.Errorf("failed to create secretmanager client: %w", err)
 	}
