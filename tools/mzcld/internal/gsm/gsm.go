@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -167,9 +168,11 @@ func ListVersions(ctx context.Context, projectID, secretName string) ([]VersionI
 		})
 	}
 
-	// Sort newest first by version number (descending).
+	// Sort newest first by version number (descending, numeric).
 	sort.Slice(versions, func(i, j int) bool {
-		return versions[i].Version > versions[j].Version
+		vi, _ := strconv.Atoi(versions[i].Version)
+		vj, _ := strconv.Atoi(versions[j].Version)
+		return vi > vj
 	})
 
 	return versions, nil

@@ -268,8 +268,12 @@ func formatRemaining(d time.Duration) string {
 	if d < 0 {
 		return "expired"
 	}
-	m := int(d.Minutes())
+	h := int(d.Hours())
+	m := int(d.Minutes()) % 60
 	s := int(d.Seconds()) % 60
+	if h > 0 {
+		return fmt.Sprintf("%d:%02d:%02d", h, m, s)
+	}
 	return fmt.Sprintf("%02d:%02d", m, s)
 }
 

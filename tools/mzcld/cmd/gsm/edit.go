@@ -69,6 +69,9 @@ func runEdit(cmd *cobra.Command, _ []string) error {
 	}
 	defer os.Remove(tmp.Name()) //nolint:errcheck
 
+	if err := os.Chmod(tmp.Name(), 0o600); err != nil {
+		return fmt.Errorf("failed to set temp file permissions: %w", err)
+	}
 	if _, err := tmp.Write(content); err != nil {
 		return fmt.Errorf("failed to write temp file: %w", err)
 	}

@@ -93,12 +93,30 @@ func RevokeGrant(ctx context.Context, grantName string) error {
 
 // --- Grant helpers -----------------------------------------------------------
 
+// activationTime returns the time the grant was activated by scanning the
+// timeline for an Activated event. Falls back to UpdateTime if no activation
+// event is found (e.g. auto-approved grants).
+func activationTime(g *Grant) time.Time {
+	if tl := g.GetTimeline(); tl != nil {
+		for _, ev := range tl.GetEvents() {
+			if ev.GetActivated() != nil && ev.GetEventTime() != nil {
+				return ev.GetEventTime().AsTime()
+			}
+		}
+	}
+	if g.GetUpdateTime() != nil {
+		return g.GetUpdateTime().AsTime()
+	}
+	return time.Time{}
+}
+
 // IsExpired reports whether the grant has passed its end time.
 func IsExpired(g *Grant) bool {
-	if g.GetUpdateTime() == nil || g.GetRequestedDuration() == nil {
+	start := activationTime(g)
+	if start.IsZero() || g.GetRequestedDuration() == nil {
 		return false
 	}
-	end := g.GetUpdateTime().AsTime().Add(g.GetRequestedDuration().AsDuration())
+	end := start.Add(g.GetRequestedDuration().AsDuration())
 	return time.Now().After(end)
 }
 
@@ -109,10 +127,11 @@ func IsApprovalAwaited(g *Grant) bool {
 
 // TimeRemaining returns the duration until the grant expires.
 func TimeRemaining(g *Grant) time.Duration {
-	if g.GetUpdateTime() == nil || g.GetRequestedDuration() == nil {
+	start := activationTime(g)
+	if start.IsZero() || g.GetRequestedDuration() == nil {
 		return 0
 	}
-	end := g.GetUpdateTime().AsTime().Add(g.GetRequestedDuration().AsDuration())
+	end := start.Add(g.GetRequestedDuration().AsDuration())
 	return time.Until(end)
 }
 
