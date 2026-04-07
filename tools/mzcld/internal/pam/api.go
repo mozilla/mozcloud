@@ -9,6 +9,7 @@ import (
 
 	pamsdk "cloud.google.com/go/privilegedaccessmanager/apiv1"
 	pamv1pb "cloud.google.com/go/privilegedaccessmanager/apiv1/privilegedaccessmanagerpb"
+	"github.com/mozilla/mozcloud/tools/mzcld/internal/gcp"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
@@ -18,7 +19,7 @@ type Grant = pamv1pb.Grant
 type Entitlement = pamv1pb.Entitlement
 
 func newClient(ctx context.Context) (*pamsdk.Client, error) {
-	return pamsdk.NewClient(ctx)
+	return pamsdk.NewClient(ctx, gcp.ClientOption())
 }
 
 // entitlementResourceName returns the PAM resource name for an entitlement.

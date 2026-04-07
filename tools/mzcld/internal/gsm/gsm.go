@@ -4,7 +4,6 @@ package gsm
 import (
 	"context"
 	"fmt"
-	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
@@ -12,29 +11,11 @@ import (
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
-	"golang.org/x/oauth2"
+	"github.com/mozilla/mozcloud/tools/mzcld/internal/gcp"
 	"google.golang.org/api/iterator"
-	"google.golang.org/api/option"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
-
-// GcloudTokenSource delegates token generation to the gcloud CLI,
-// which handles RAPT and security-key reauthentication transparently.
-type GcloudTokenSource struct{}
-
-func (g *GcloudTokenSource) Token() (*oauth2.Token, error) {
-	out, err := exec.Command("gcloud", "auth", "print-access-token").Output()
-	if err != nil {
-		return nil, fmt.Errorf("gcloud auth print-access-token failed: %w", err)
-	}
-	return &oauth2.Token{AccessToken: strings.TrimSpace(string(out))}, nil
-}
-
-// ClientOption returns a google API client option that uses gcloud for auth.
-func ClientOption() option.ClientOption {
-	return option.WithTokenSource(&GcloudTokenSource{})
-}
 
 // VersionInfo holds metadata about a single secret version.
 type VersionInfo struct {
@@ -51,7 +32,7 @@ type Client struct {
 
 // NewClient creates a new GSM client using gcloud token auth.
 func NewClient(ctx context.Context) (*Client, error) {
-	sm, err := secretmanager.NewClient(ctx, ClientOption())
+	sm, err := secretmanager.NewClient(ctx, gcp.ClientOption())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create secretmanager client: %w", err)
 	}

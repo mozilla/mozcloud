@@ -8,14 +8,13 @@ import (
 
 	resourcemanager "cloud.google.com/go/resourcemanager/apiv3"
 	"cloud.google.com/go/resourcemanager/apiv3/resourcemanagerpb"
-	"github.com/mozilla/mozcloud/tools/mzcld/internal/gsm"
 	"google.golang.org/api/iterator"
 )
 
 // ListAccessibleProjects returns project IDs the caller has access to,
-// sorted alphabetically. Uses the gcloud token source to handle RAPT.
+// sorted alphabetically. Uses the active auth mode.
 func ListAccessibleProjects(ctx context.Context) ([]string, error) {
-	client, err := resourcemanager.NewProjectsClient(ctx, gsm.ClientOption())
+	client, err := resourcemanager.NewProjectsClient(ctx, ClientOption())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create resource manager client: %w", err)
 	}

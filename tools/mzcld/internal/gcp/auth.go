@@ -14,15 +14,77 @@ import (
 
 	"cloud.google.com/go/storage"
 	"charm.land/huh/v2"
+	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+	"google.golang.org/api/option"
 
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/cache"
 )
 
-// --- Auth --------------------------------------------------------------------
+// --- Auth mode ---------------------------------------------------------------
 
-// EnsureAuthenticated returns the current user's email, running the gcloud
-// auth flow interactively if credentials are missing or expired.
+// AuthMode controls how mzcld obtains GCP credentials.
+type AuthMode string
+
+const (
+	// AuthModeGcloud shells out to gcloud CLI for tokens. Default. RAPT-safe.
+	AuthModeGcloud AuthMode = "gcloud"
+	// AuthModeADC uses Application Default Credentials. For CI/service accounts.
+	AuthModeADC AuthMode = "adc"
+)
+
+var activeAuthMode AuthMode = AuthModeGcloud
+
+// SetAuthMode sets the global authentication mode.
+func SetAuthMode(m AuthMode) { activeAuthMode = m }
+
+// GetAuthMode returns the current authentication mode.
+func GetAuthMode() AuthMode { return activeAuthMode }
+
+// --- Token sources -----------------------------------------------------------
+
+// gcloudTokenSource delegates token generation to the gcloud CLI,
+// which handles RAPT and security-key reauthentication transparently.
+type gcloudTokenSource struct{}
+
+func (g *gcloudTokenSource) Token() (*oauth2.Token, error) {
+	out, err := exec.Command("gcloud", "auth", "print-access-token").Output()
+	if err != nil {
+		return nil, fmt.Errorf("gcloud auth print-access-token failed: %w", err)
+	}
+	return &oauth2.Token{AccessToken: strings.TrimSpace(string(out))}, nil
+}
+
+// adcTokenSource uses Application Default Credentials.
+type adcTokenSource struct{}
+
+func (a *adcTokenSource) Token() (*oauth2.Token, error) {
+	ctx := context.Background()
+	creds, err := google.FindDefaultCredentials(ctx, "https://www.googleapis.com/auth/cloud-platform")
+	if err != nil {
+		return nil, fmt.Errorf("failed to find default credentials: %w", err)
+	}
+	return creds.TokenSource.Token()
+}
+
+// TokenSource returns the active token source based on the current auth mode.
+func TokenSource() oauth2.TokenSource {
+	if activeAuthMode == AuthModeADC {
+		return &adcTokenSource{}
+	}
+	return &gcloudTokenSource{}
+}
+
+// ClientOption returns a google API client option using the active auth mode.
+// All GCP SDK clients should use this for consistent authentication.
+func ClientOption() option.ClientOption {
+	return option.WithTokenSource(TokenSource())
+}
+
+// --- Auth flow ---------------------------------------------------------------
+
+// EnsureAuthenticated returns the current user's email, running the appropriate
+// gcloud auth flow interactively if credentials are missing or expired.
 func EnsureAuthenticated() (string, error) {
 	email, err := GetUserEmail()
 	if err == nil {
@@ -32,22 +94,28 @@ func EnsureAuthenticated() (string, error) {
 		return "", err
 	}
 
+	authCmd := "gcloud auth login"
+	if activeAuthMode == AuthModeADC {
+		authCmd = "gcloud auth application-default login"
+	}
+
 	var runAuth bool
 	if promptErr := huh.NewForm(
 		huh.NewGroup(
 			huh.NewConfirm().
 				Title("Not authenticated").
-				Description("Run `gcloud auth application-default login` now?").
+				Description(fmt.Sprintf("Run `%s` now?", authCmd)).
 				Value(&runAuth),
 		),
 	).Run(); promptErr != nil {
 		return "", promptErr
 	}
 	if !runAuth {
-		return "", fmt.Errorf("authentication required: run `gcloud auth application-default login`")
+		return "", fmt.Errorf("authentication required: run `%s`", authCmd)
 	}
 
-	cmd := exec.Command("gcloud", "auth", "application-default", "login")
+	args := strings.Fields(authCmd)
+	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -66,6 +134,7 @@ func isAuthError(err error) bool {
 		strings.Contains(msg, "oauth2: token expired") ||
 		strings.Contains(msg, "Unauthenticated") ||
 		strings.Contains(msg, "reauth") ||
+		strings.Contains(msg, "print-access-token failed") ||
 		strings.Contains(msg, "not from mozilla.com domain")
 }
 
@@ -81,13 +150,9 @@ type gcpUserInfo struct {
 
 // GetUserEmail returns the email address for the currently authenticated GCP
 // user. It validates that the account belongs to the mozilla.com domain.
+// Uses the active auth mode's token source.
 func GetUserEmail() (string, error) {
-	ctx := context.Background()
-	creds, err := google.FindDefaultCredentials(ctx, "https://www.googleapis.com/auth/cloud-platform")
-	if err != nil {
-		return "", fmt.Errorf("failed to find default credentials: %w", err)
-	}
-	token, err := creds.TokenSource.Token()
+	token, err := TokenSource().Token()
 	if err != nil {
 		return "", fmt.Errorf("failed to get token: %w", err)
 	}
@@ -186,7 +251,7 @@ func Load() (ProjectCache, error) {
 
 // LoadEntitlements always downloads the user's entitlement list fresh from GCS.
 func LoadEntitlements(ctx context.Context, bucketName, userEmail string) ([]UserEntitlement, error) {
-	client, err := storage.NewClient(ctx)
+	client, err := storage.NewClient(ctx, ClientOption())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create storage client: %w", err)
 	}
