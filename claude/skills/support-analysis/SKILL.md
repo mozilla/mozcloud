@@ -79,3 +79,20 @@ The report includes:
 - Actionable recommendations ranked by impact
 - SREIN ticket status and process observations
 
+## Linking Jira Issues
+
+When producing reports (especially for Confluence), always link Jira ticket keys to their browse URL: `[SREIN-123](https://mozilla-hub.atlassian.net/browse/SREIN-123)`. This applies to theme details, tickets needing attention, and any ticket referenced in the report. In Confluence's Atlassian storage format, use the Jira issue macro or a plain `<a>` link — Confluence auto-renders linked ticket keys.
+
+## Publishing to Confluence
+
+After creating or updating a Confluence page, set it to **full-width layout** by setting two content properties via the REST API:
+
+1. `content-appearance-published` → `"full-width"`
+2. `content-appearance-draft` → `"full-width"`
+
+For each property, GET `/wiki/rest/api/content/{pageId}/property/{key}` first:
+- If it exists (200), PUT with the value and an incremented `version.number`
+- If it doesn't exist (404), POST to `/wiki/rest/api/content/{pageId}/property` with the key and value
+
+**Limitation**: The Atlassian MCP server does not currently expose content property APIs or raw REST access. Until it does, prompt the user to manually set the page to full-width via the Confluence UI (page menu → "Full width").
+

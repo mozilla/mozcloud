@@ -4,12 +4,12 @@ Categories for classifying MozCloud support interactions. Each message or ticket
 
 ## Jira Ticket Flow
 
-SREIN tickets are created via the JSM intake form and posted to #mozcloud-support by the Jira bot. After triage, they are moved to downstream projects while retaining the `srein` label:
+SREIN tickets are created via the Jira intake form and posted to #mozcloud-support by the Jira bot. After triage, they are moved to downstream projects while retaining the `srein` label:
 - **SVCSE** — general service engineering requests (~66% of volume)
 - **MZCLD** — MozCloud platform-specific work (~8%)
 - **INFRASEC** — security-related infrastructure requests (~3%)
 - **Other** — OPST, WT, DENG, etc. (~3%)
-- **SREIN** — untriaged tickets still in the intake queue (~20%)
+- **SREIN** — tickets resolved directly by the triager or still awaiting triage (~20%)
 
 Always query by `labels = srein` to capture the full ticket set.
 

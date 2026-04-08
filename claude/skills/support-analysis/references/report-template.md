@@ -45,6 +45,7 @@ For each theme with significant volume, include:
 - 2-3 representative message excerpts with dates and users
 - Whether resolution typically happens in Slack or Jira
 - Any systemic patterns (same question from multiple users = doc gap)
+- Related Jira tickets linked by key (e.g., [SREIN-123](https://mozilla-hub.atlassian.net/browse/SREIN-123))
 
 ---
 
@@ -109,7 +110,7 @@ Rank by impact (high/medium/low). Each recommendation should include:
 - Resolution time observations (fastest, slowest, typical)
 
 ### Tickets Needing Attention
-List any tickets stuck in "Needs Clarification" or unassigned for >7 days.
+List any tickets stuck in "Needs Clarification" or unassigned for >7 days. Link each ticket by key.
 
 ---
 
