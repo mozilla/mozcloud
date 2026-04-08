@@ -52,6 +52,8 @@ python3 cross_reference.py --slack slack_categorized.json --jira jira_categorize
 
 # 2. Export Slack messages (via MCP or API) to slack_raw.json
 # 3. Export Jira tickets (via MCP or API) to jira_raw.json
+#    IMPORTANT: Query by label, not project — tickets move to SVCSE/MZCLD after triage
+#    JQL: labels = srein AND created >= "YYYY-MM-DD"
 
 # 4. Categorize both (summary goes to stderr, JSON to stdout)
 python3 categorize_messages.py -f slack_raw.json > slack_categorized.json 2>/dev/null

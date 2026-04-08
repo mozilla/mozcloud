@@ -31,7 +31,7 @@ The analysis cross-references both sources to find tracking gaps where support w
 
 1. **Ingest**: Run `scripts/compute_timerange.sh` to get Unix timestamps for the requested period
 2. **Read Slack**: Paginate through channel history, filtering out bot/automated messages
-3. **Read Jira**: Query SREIN tickets from the same period
+3. **Read Jira**: Query tickets with `srein` label from the same period (JQL: `labels = srein AND created >= ...`)
 4. **Categorize**: Assign messages and tickets to theme buckets using `references/category-definitions.md`
 5. **Cross-reference**: Compare Slack volume vs Jira volume per theme
 6. **Report**: Output using `references/report-template.md` structure
