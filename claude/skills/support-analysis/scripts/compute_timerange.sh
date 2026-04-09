@@ -23,9 +23,11 @@
 RAW_INPUT="${*:-30}"
 INPUT_LOWER=$(echo "$RAW_INPUT" | tr '[:upper:]' '[:lower:]')
 
-# Helper: get Unix timestamp from YYYY-MM-DD (macOS + Linux)
+# Helper: get Unix timestamp from YYYY-MM-DD at midnight (macOS + Linux)
+# Note: on macOS, date -j -f "%Y-%m-%d" fills in current H:M:S, which causes
+# off-by-hours bugs. Always append T00:00:00 to get true midnight.
 to_epoch() {
-  date -j -f "%Y-%m-%d" "$1" +%s 2>/dev/null || date -d "$1" +%s 2>/dev/null
+  date -j -f "%Y-%m-%dT%H:%M:%S" "${1}T00:00:00" +%s 2>/dev/null || date -d "${1} 00:00:00" +%s 2>/dev/null
 }
 
 # Helper: get current year/month
