@@ -228,3 +228,32 @@ workloads:
 ```
 
 **Never use both** `configMaps` and `volumes` arrays for the same ConfigMap - choose one pattern based on whether you need environment variables or file mounts.
+
+## Container Security Context Override
+
+By default, mozcloud sets the pod-level `runAsUser: 10001` and `runAsGroup: 10001`. Containers inherit these unless explicitly overridden.
+
+Some images run as a different user by design (e.g., openresty runs as user/group `101`). Override at the container level using the `security` key:
+
+```yaml
+mozcloud:
+  workloads:
+    my-app:
+      containers:
+        my-container:
+          security:
+            user: 101
+            group: 101
+```
+
+This maps to `securityContext.runAsUser` and `runAsGroup` on the container spec, overriding the pod-level defaults. The pod-level context (`runAsNonRoot: true`, `runAsUser: 10001`) is unchanged.
+
+**When to use**: Any container whose image requires a specific UID/GID to function correctly (e.g., openresty/nginx variants that run as user 101).
+
+## Port Name Truncation
+
+Kubernetes limits port names to 15 characters. When a container name exceeds 15 characters, mozcloud truncates port names to match. This is **intentional and functionally correct** — the truncated name is used consistently across both the container `ports[].name` and the Service `targetPort`, so routing still works.
+
+Example: a container named `extensionworkshop` (17 chars) will have its port named `extensionworksh` (15 chars) in both the container spec and Service.
+
+Do not treat this as an error or attempt to work around it.

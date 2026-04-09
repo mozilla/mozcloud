@@ -94,6 +94,37 @@ The new names are permanent going forward — no rename step needed.
   helm template . -f values.yaml -f values-dev.yaml | grep -E "^kind:"
   ```
 
+## Unexpected PodMonitoring resource for telegraf (mozcloud ≥ 0.15.0)
+
+**Symptoms:**
+- `helm template` output includes a `PodMonitoring` resource named `{app}-telegraf`
+- This resource was not present in the original chart
+
+**Explanation:** mozcloud added a telegraf `PodMonitoring` resource that is enabled by default.
+
+**Solution:** If the original chart did not have telegraf, disable it explicitly:
+```yaml
+mozcloud:
+  telegraf:
+    enabled: false
+```
+
+## Local file:// chart dependency version mismatch
+
+**Context:** This issue only arises when testing changes to the mozcloud chart itself using a local `file://` repository reference (e.g., during mozcloud development or pre-release validation). Normal migration users pull from the OCI registry and won't encounter this.
+
+**Symptoms:**
+- `helm dependency update` fails with "can't get a valid version for subchart"
+- Error references a `file:///path/to/local/chart` repository
+
+**Cause:** The `version` in the app chart's `Chart.yaml` doesn't match the `version` declared in the local mozcloud chart's `Chart.yaml`.
+
+**Solution:** Update the app chart's dependency version to match the local chart's actual version:
+```bash
+grep '^version:' /path/to/local/mozcloud/Chart.yaml
+# Then update Chart.yaml accordingly and re-run helm dependency update
+```
+
 ## Chart.lock conflicts
 
 **Symptoms:**
