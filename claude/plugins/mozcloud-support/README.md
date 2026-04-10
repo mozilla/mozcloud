@@ -7,6 +7,7 @@ Claude Code plugin for MozCloud customer support analysis.
 | Type | Name | Description |
 |------|------|-------------|
 | Skill | `support-analysis` | Analyze support patterns across Slack (#mozcloud-support) and Jira (SREIN), categorize themes, and produce actionable reports |
+| Skill | `srein-triage | Provide triage suggestions for BACKLOG and NEEDS CLARIFICATION issues in the SREIN Jira project |
 
 ## Requirements
 
