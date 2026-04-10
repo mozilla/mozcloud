@@ -1,13 +1,29 @@
 # mozcloud Claude integration
 
-Skills, agents, and an MCP server for using Claude Code with mozcloud. Currently supporting mozcloud Helm chart migrations.
+Skills, agents, and an MCP server for using Claude Code with mozcloud.
 
-## Requirements
+## Install via plugin registry (recommended)
 
-- [Claude Code](https://claude.ai/code)
-- Go 1.21+
+Add the mozcloud marketplace and install the plugins you need:
 
-## Install
+```bash
+# One-time: register the marketplace
+claude plugin add-marketplace mozilla/mozcloud --path claude
+
+# Helm chart migration toolkit (skill + agent + MCP server, requires Go 1.21+)
+claude plugin install mozcloud-helm
+
+# Customer support analysis (no dependencies)
+claude plugin install mozcloud-support
+```
+
+The `mozcloud-helm` plugin requires building the MCP server binary:
+
+```bash
+go install github.com/mozilla/mozcloud/tools/mozcloud-mcp@latest
+```
+
+## Install via script (legacy)
 
 ```bash
 ./claude/install.sh
@@ -27,15 +43,11 @@ Use `--scope` to control where skills and agents are linked and at what scope th
 ./claude/install.sh --scope user
 ```
 
-Skills and agents are linked to `~/.claude/`. The MCP server is registered globally.
-
 **Project scope** — available only in this repo:
 
 ```bash
 ./claude/install.sh --scope project
 ```
-
-Skills and agents are linked to `.claude/` in the repository root. The MCP server is registered in the project's `.claude/settings.json`.
 
 ### Update
 
@@ -45,10 +57,9 @@ To upgrade the `mozcloud-mcp` binary to the latest published version:
 ./claude/install.sh --update
 ```
 
-## What's included
+## Available plugins
 
-| Type | Name | Description |
-|------|------|-------------|
-| Skill | `mozcloud-chart-migration` | Step-by-step Helm chart migration to mozcloud |
-| Agent | `mozcloud-helm-migrator` | Autonomous agent for end-to-end chart migrations |
-| MCP server | `mozcloud-mcp` | Tools for helm ops, OCI registry checks, schema validation, and render diffs |
+| Plugin | Contents | Requirements |
+|--------|----------|--------------|
+| `mozcloud-helm` | `mozcloud-chart-migration` skill, `mozcloud-helm-migrator` agent, `mozcloud` MCP server | Go 1.21+ |
+| `mozcloud-support` | `support-analysis` skill | None |

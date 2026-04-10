@@ -1,0 +1,8 @@
+{
+  "name": "mozcloud-support",
+  "description": "MozCloud customer support analysis — cross-references Slack and Jira to categorize themes and produce actionable reports",
+  "author": {
+    "name": "Mozilla SRE",
+    "email": "sre@mozilla.com"
+  }
+}

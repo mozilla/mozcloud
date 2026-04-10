@@ -1,0 +1,7 @@
+{
+  "mozcloud": {
+    "command": "mozcloud-mcp",
+    "args": ["--transport", "stdio"],
+    "env": {}
+  }
+}
