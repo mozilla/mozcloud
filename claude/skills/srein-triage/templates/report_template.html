@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SREIN Triage Report — YYYY-MM-DD</title>
+  <style>
+    body { font-family: system-ui, sans-serif; font-size: 1.1rem; max-width: 960px; margin: 0 auto; padding: 0 1.5rem 2rem; color: #1a1a1a; }
+    .sticky-header { position: sticky; top: 0; background: #fff; z-index: 10; padding: 1.5rem 0 0.5rem; border-bottom: 2px solid #333; margin-bottom: 1rem; }
+    .sticky-header h1 { margin: 0 0 0.25rem; font-size: 1.6rem; border: none; padding: 0; }
+    .sticky-header .stats { margin: 0; color: #555; font-size: 0.95rem; }
+    .section-heading { margin-top: 2.5rem; font-size: 1.35rem; border-bottom: 2px solid #666; padding-bottom: 0.4rem; color: #222; }
+    .backlog-card { border-left: 4px solid #2563eb; }
+    .nc-card { border-left: 4px solid #ea580c; }
+    .stale-card { border-left: 4px solid #dc2626; background: #fef2f2; }
+    .stale-badge { display: inline-block; background: #dc2626; color: #fff; font-size: 0.8rem; font-weight: 600; padding: 0.1rem 0.5rem; border-radius: 3px; margin-left: 0.5rem; vertical-align: middle; }
+    .issue { border: 1px solid #ddd; border-radius: 6px; padding: 1.25rem 1.5rem; margin-bottom: 1.75rem; }
+    .issue h2 { margin-top: 0; font-size: 1.2rem; }
+    .issue h2 a { color: #0052cc; text-decoration: none; }
+    .issue h2 a:hover { text-decoration: underline; }
+    .meta { width: 100%; border-collapse: collapse; margin-bottom: 0.75rem; font-size: 1.05rem; }
+    .meta td { padding: 0.3rem 0.7rem; vertical-align: top; border-bottom: 1px solid #eee; }
+    .meta td:first-child { font-weight: 600; white-space: nowrap; width: 9rem; color: #555; }
+    .meta td:last-child { color: #1a1a1a; }
+    .meta a { color: #0052cc; text-decoration: none; }
+    .meta tr:last-child td { border-bottom: none; }
+    .links { margin: 0 0 0.75rem; padding-left: 1.25rem; font-size: 0.95rem; color: #444; }
+    .links li { margin-bottom: 0.25rem; }
+    .links a { color: #0052cc; text-decoration: none; }
+    .links a:hover { text-decoration: underline; }
+    .about { margin-bottom: 1rem; line-height: 1.6; }
+    .steps { width: 100%; border-collapse: collapse; margin-bottom: 0.25rem; }
+    .steps td { padding: 0.55rem 0.7rem; line-height: 1.5; border-bottom: 1px solid #eee; vertical-align: top; }
+    .steps tr:last-child td { border-bottom: none; }
+    .steps tr:nth-child(even) td { background: #f8f9fa; }
+    .steps td:nth-child(1) { width: 2.2rem; text-align: center; font-size: 1.25em; }
+    .steps td:nth-child(2) { width: 11rem; font-weight: 600; white-space: nowrap; }
+    .docs { margin: 0.75rem 0 0; padding-left: 1.25rem; font-size: 1.05rem; color: #444; }
+    .docs li { margin-bottom: 0.25rem; }
+    .docs a { color: #0052cc; text-decoration: none; }
+    .docs a:hover { text-decoration: underline; }
+    .docs-heading { font-weight: 600; font-size: 1.05rem; margin: 0.75rem 0 0.25rem; color: #333; }
+    .summary-line { font-weight: 600; margin-top: 1rem; padding: 0.6rem 0.75rem; border-top: 1px solid #ddd; background: #fefce8; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="sticky-header">
+    <h1>SREIN Triage Report — YYYY-MM-DD</h1>
+    <p class="stats">N Backlog issues, M Needs Clarification issues</p>
+  </div>
+
+  <h2 class="section-heading">Backlog (N)</h2>
+  <!-- Repeat for each Backlog issue — same card structure as Needs Clarification below -->
+  <div class="issue backlog-card">
+    <h2><a href="https://mozilla-hub.atlassian.net/browse/SREIN-XXXX">SREIN-XXXX</a>: Summary text</h2>
+    <table class="meta">
+      <tr><td>Reporter</td><td>Display Name &lt;email@mozilla.com&gt; &mdash; N previous intake tickets, pattern summary &middot; Primarily active in PROJECT1, PROJECT2</td></tr>
+      <tr><td>Created</td><td>YYYY-MM-DD</td></tr>
+      <tr><td>Updated</td><td>YYYY-MM-DD -- Last comment: N days ago</td></tr>
+      <tr><td>Priority</td><td>Medium</td></tr>
+    </table>
+    <ul class="links">
+      <li><a href="https://mozilla-hub.atlassian.net/browse/KEY-123">KEY-123</a> — brief context (JIRA link)</li>
+    </ul>
+    <div class="about">What this is about: 2-3 sentence summary...</div>
+    <table class="steps">
+      <tr><td>✅/❌</td><td>1. Request clarity</td><td>assessment text</td></tr>
+      <tr><td>✅/❌</td><td>2. Self-serve</td><td>assessment text</td></tr>
+      <tr><td>➖/✅</td><td>3. Cost-savings labels</td><td>labels or "None applicable"</td></tr>
+      <tr><td>✅</td><td>4. Priority</td><td>Recommend P0/P1/P2 — reason</td></tr>
+      <tr><td>➖/✅</td><td>5. Platform improvement</td><td>assessment text</td></tr>
+      <tr><td>✅/❌</td><td>6. Can triage do it?</td><td>assessment text</td></tr>
+      <tr><td>✅/❌</td><td>7. Routing</td><td>Recommend PROJECT — reason</td></tr>
+    </table>
+    <!-- Include only if relevant docs were found -->
+    <div class="docs-heading">📄 Relevant CloudEng Documentation</div>
+    <ul class="docs">
+      <li><a href="https://mozilla-hub.atlassian.net/wiki/...">Runbook: Service Name</a> — why it's relevant</li>
+    </ul>
+    <div class="summary-line">→ One-line actionable recommendation</div>
+  </div>
+
+  <h2 class="section-heading">Needs Clarification (M)</h2>
+  <!-- Repeat for each Needs Clarification issue -->
+  <div class="issue nc-card">
+    <h2><a href="https://mozilla-hub.atlassian.net/browse/SREIN-XXXX">SREIN-XXXX</a>: Summary text</h2>
+    <table class="meta">
+      <tr><td>Reporter</td><td>Display Name &lt;email@mozilla.com&gt; &mdash; N previous intake tickets, pattern summary &middot; Primarily active in PROJECT1, PROJECT2</td></tr>
+      <tr><td>Created</td><td>YYYY-MM-DD</td></tr>
+      <tr><td>Updated</td><td>YYYY-MM-DD -- Last comment: N days ago</td></tr>
+      <tr><td>Priority</td><td>Medium</td></tr>
+    </table>
+    <ul class="links">
+      <li><a href="https://mozilla-hub.atlassian.net/browse/KEY-123">KEY-123</a> — brief context (JIRA link)</li>
+      <li><a href="https://docs.google.com/...">Google Doc title or URL</a> — context</li>
+      <li><a href="https://mozilla-hub.atlassian.net/wiki/...">Confluence page title</a> — context</li>
+      <!-- ... more links from description and comments ... -->
+    </ul>
+    <div class="about">What this is about: 2-3 sentence summary...</div>
+    <table class="steps">
+      <tr><td>✅/❌</td><td>1. Request clarity</td><td>assessment text</td></tr>
+      <tr><td>✅/❌</td><td>2. Self-serve</td><td>assessment text</td></tr>
+      <tr><td>➖/✅</td><td>3. Cost-savings labels</td><td>labels or "None applicable"</td></tr>
+      <tr><td>✅</td><td>4. Priority</td><td>Recommend P0/P1/P2 — reason</td></tr>
+      <tr><td>➖/✅</td><td>5. Platform improvement</td><td>assessment text</td></tr>
+      <tr><td>✅/❌</td><td>6. Can triage do it?</td><td>assessment text</td></tr>
+      <tr><td>✅/❌</td><td>7. Routing</td><td>Recommend PROJECT — reason</td></tr>
+    </table>
+    <!-- Include only if relevant docs were found -->
+    <div class="docs-heading">📄 Relevant CloudEng Documentation</div>
+    <ul class="docs">
+      <li><a href="https://mozilla-hub.atlassian.net/wiki/...">Runbook: Service Name</a> — why it's relevant</li>
+    </ul>
+    <div class="summary-line">Next steps: Actionable recommendations for next steps</div>
+  </div>
+</body>
+</html>
