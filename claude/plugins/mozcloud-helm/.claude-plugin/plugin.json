@@ -2,7 +2,6 @@
   "name": "mozcloud-helm",
   "description": "Helm chart migration toolkit for MozCloud — migration skill, autonomous migrator agent, and MCP server for helm ops, schema validation, and render diffs",
   "author": {
-    "name": "Mozilla SRE",
-    "email": "sre@mozilla.com"
+    "name": "Mozilla CloudEng"
   }
 }
