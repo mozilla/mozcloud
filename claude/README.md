@@ -8,7 +8,7 @@ Add the mozcloud marketplace and install the plugins you need:
 
 ```bash
 # One-time: register the marketplace
-claude plugin add-marketplace mozilla/mozcloud --path claude
+claude plugin add-marketplace mozilla/mozcloud
 
 # Helm chart migration toolkit (skill + agent + MCP server, requires Go 1.21+)
 claude plugin install mozcloud-helm
