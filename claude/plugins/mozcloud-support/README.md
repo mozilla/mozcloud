@@ -25,4 +25,4 @@ claude plugin install mozcloud-support
 
 ## Usage
 
-Once installed, use the `/support-analysis` skill or ask Claude to analyze recent support activity.
+Once installed, use the `/support-analysis` and `/srein-triage` skills or ask Claude to analyze recent support activity.
