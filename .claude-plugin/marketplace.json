@@ -15,7 +15,7 @@
     },
     {
       "name": "mozcloud-support",
-      "description": "MozCloud customer support analysis — cross-references Slack (#mozcloud-support) and Jira (SREIN) to categorize themes and produce actionable reports",
+      "description": "MozCloud customer support skills — support analysis that cross-references Slack (#mozcloud-support) and Jira (SREIN) to categorize themes and produce actionable reports and SREIN triage skill",
       "source": "./claude/plugins/mozcloud-support",
       "category": "productivity"
     }
