@@ -93,6 +93,7 @@ This symlinks skills and agents into `.claude/` or `~/.claude/`, and installs + 
 | Type | Name | Description |
 |------|------|-------------|
 | Skill | [`mozcloud-chart-migration`](./claude/skills/mozcloud-chart-migration/) | Step-by-step guided Helm chart migration to mozcloud |
+| Skill | [`srein-triage`](./claude/skills/srein-triage/) | Aid for daily intake and triage of MozCloud customer support requests in the Jira SREIN project |
 | Agent | `mozcloud-helm-migrator` | Autonomous agent for end-to-end chart migrations |
 | MCP Server | [`mozcloud-mcp`](./tools/mozcloud-mcp/) | Helm ops, OCI registry checks, schema validation, and render diffs |
 
@@ -113,3 +114,21 @@ Key features:
 - Cross-tenant pattern learning from previous migrations
 
 See the [skill README](./claude/skills/mozcloud-chart-migration/README.md) and [SKILL.md](./claude/skills/mozcloud-chart-migration/SKILL.md) for full documentation.
+
+### srein-triage skill
+
+Aids daily intake and triage of MozCloud customer support requests in the Jira SREIN project. Fetches BACKLOG and NEEDS CLARIFICATION issues, reads the current triage process from Confluence, and produces an HTML report with structured triage suggestions and relevant documentation. Then share your screen and go through the report during the meeting.
+
+```bash
+# Triage all Backlog and Needs Clarification issues -- do this 10
+# minutes before the meeting
+/srein-triage
+
+# Triage a single issue
+/srein-triage SREIN-1127
+```
+
+Requires the [Atlassian MCP server](https://github.com/atlassian/atlassian-mcp-server) plugin for JIRA/Confluence access. The skill is read-only -- it never modifies tickets or Confluence pages.
+
+See the [skill README](./claude/skills/srein-triage/README.md) and [SKILL.md](./claude/skills/srein-triage/SKILL.md) for full documentation.
+
