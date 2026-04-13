@@ -23,7 +23,7 @@ The skill uses the [Atlassian MCP server](https://github.com/atlassian/atlassian
 Copy the entire skill directory to your Claude Code skills directory:
 
 ```bash
-cp -r srein-triage ~/.claude/skills/srein-triage
+ln -s "$(pwd)/srein-triage" ~/.claude/skills/srein-triage
 ```
 
 ### 3. Add recommended permissions
