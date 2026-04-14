@@ -45,7 +45,7 @@ Before installing this skill, ensure you have:
 Install via the MozCloud plugin marketplace:
 
 ```bash
-claude plugin add-marketplace https://github.com/mozilla/mozcloud
+claude plugin marketplace add mozilla/mozcloud
 claude plugin install mozcloud-helm
 ```
 

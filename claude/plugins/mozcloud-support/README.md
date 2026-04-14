@@ -17,7 +17,7 @@ None — this is a pure skills plugin with no binary dependencies.
 
 ```bash
 # One-time: add the mozcloud marketplace
-claude plugin add-marketplace mozilla/mozcloud
+claude plugin marketplace add mozilla/mozcloud
 
 # Install this plugin
 claude plugin install mozcloud-support

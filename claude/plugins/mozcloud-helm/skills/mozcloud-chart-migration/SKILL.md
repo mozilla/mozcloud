@@ -13,7 +13,7 @@ This skill requires the **`mozcloud` MCP server** to be registered with Claude C
 If MCP tools (`migration_preflight_check`, `helm_template`, etc.) are unavailable, ask the user to install the `mozcloud-helm` plugin:
 
 ```bash
-claude plugin add-marketplace https://github.com/mozilla/mozcloud
+claude plugin marketplace add mozilla/mozcloud
 claude plugin install mozcloud-helm
 ```
 

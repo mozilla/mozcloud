@@ -79,7 +79,7 @@ See the [mozcloud-mcp README](./tools/mozcloud-mcp/README.md) for installation a
 Skills, agents, and an MCP server for using [Claude Code](https://claude.ai/code) with MozCloud workflows. Install via the plugin marketplace:
 
 ```bash
-claude plugin add-marketplace https://github.com/mozilla/mozcloud
+claude plugin marketplace add mozilla/mozcloud
 claude plugin install mozcloud-helm
 claude plugin install mozcloud-support
 ```

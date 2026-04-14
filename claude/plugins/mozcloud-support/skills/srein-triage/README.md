@@ -21,7 +21,7 @@ The skill uses the [Atlassian MCP server](https://github.com/atlassian/atlassian
 ### 2. Install the mozcloud-support plugin
 
 ```bash
-claude plugin add-marketplace https://github.com/mozilla/mozcloud
+claude plugin marketplace add mozilla/mozcloud
 claude plugin install mozcloud-support
 ```
 
