@@ -12,7 +12,7 @@ Migrate a Helm chart at a user-specified path to use the MozCloud dependency cha
 
 ## Related Resources
 
-This agent is the autonomous counterpart to the interactive `/mozcloud-chart-migration` skill. The skill's reference documentation at `claude/skills/mozcloud-chart-migration/references/` contains detailed guidance that complements this agent:
+This agent is the autonomous counterpart to the interactive `/mozcloud-chart-migration` skill. The skill's reference documentation at `claude/plugins/mozcloud-helm/skills/mozcloud-chart-migration/references/` contains detailed guidance that complements this agent:
 
 - **[mozcloud-chart-reference.md](../skills/mozcloud-chart-migration/references/mozcloud-chart-reference.md)** — Chart schema, field mappings, and migration patterns
 - **[configuration-patterns.md](../skills/mozcloud-chart-migration/references/configuration-patterns.md)** — Nginx and workload configuration patterns
@@ -61,7 +61,7 @@ If `render-diff` is not available, prompt the user to install it from `https://g
 ### Step 1: Discovery & Reconnaissance
 1. Read the full MozCloud values schema from: `https://github.com/mozilla/helm-charts/blob/main/mozcloud/application/values.schema.json`
    Pay particular attention to `workloads[].backends` (Service generation) and `hosts` (Ingress/Gateway generation), as these replace custom Service and Ingress templates.
-2. Read the skill reference at `claude/skills/mozcloud-chart-migration/references/mozcloud-chart-reference.md` for field mapping conventions already established for this project.
+2. Read the skill reference at `claude/plugins/mozcloud-helm/skills/mozcloud-chart-migration/references/mozcloud-chart-reference.md` for field mapping conventions already established for this project.
 3. Read the existing `values.yaml` in the provided chart path.
 4. Identify all environment values files (`values-dev.yaml`, `values-stage.yaml`, `values-prod.yaml`, regional variants like `values-stage-europe-west1.yaml`).
 5. Read ALL templates in the `templates/` directory.

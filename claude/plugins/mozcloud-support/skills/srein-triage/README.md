@@ -18,12 +18,11 @@ The skill uses the [Atlassian MCP server](https://github.com/atlassian/atlassian
 3. Search for **atlassian** and install it
 4. Follow the OAuth prompt to authenticate with your `mozilla-hub.atlassian.net` account in your browser
 
-### 2. Copy the skill directory
-
-Copy the entire skill directory to your Claude Code skills directory:
+### 2. Install the mozcloud-support plugin
 
 ```bash
-cp -r srein-triage ~/.claude/skills/srein-triage
+claude plugin add-marketplace https://github.com/mozilla/mozcloud
+claude plugin install mozcloud-support
 ```
 
 ### 3. Add recommended permissions

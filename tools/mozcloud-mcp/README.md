@@ -4,17 +4,12 @@ An [MCP](https://modelcontextprotocol.io) server that exposes Helm chart operati
 
 ## Installation
 
-The easiest way to build and register the server is through the install script at the repository root:
+The easiest way to install is via the `mozcloud-helm` plugin, which includes the MCP server:
 
 ```bash
-# Register at project scope (recommended for mozcloud work)
-./claude/install.sh --mcp-project
-
-# Or register at user scope
-./claude/install.sh --mcp-user
+claude plugin add-marketplace https://github.com/mozilla/mozcloud
+claude plugin install mozcloud-helm
 ```
-
-This builds the binary via `go install` and registers it with `claude mcp add`.
 
 ### Manual installation
 
