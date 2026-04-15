@@ -15,6 +15,38 @@ make build   # outputs bin/mzcld
 make install # installs to $GOPATH/bin
 ```
 
+## Authentication
+
+mzcld uses a global `--auth-mode` flag to control how it authenticates with GCP APIs. All commands use the same auth path for consistent behavior.
+
+### `gcloud` (default)
+
+Delegates token generation to the gcloud CLI via `gcloud auth print-access-token`. This handles RAPT reauthentication and security key challenges transparently, which is required under Mozilla's Workspace policy.
+
+```bash
+# Authenticate first
+gcloud auth login
+
+# All commands use your gcloud session
+mzcld gsm list -p my-project
+mzcld jit elevate
+```
+
+### `adc`
+
+Uses Application Default Credentials. Intended for CI pipelines and service accounts where gcloud CLI is not available or interactive auth is not possible.
+
+```bash
+# Authenticate with ADC
+gcloud auth application-default login
+
+# Or set a service account key
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json
+
+# Pass the flag
+mzcld --auth-mode adc jit elevate "deploy pipeline"
+```
+
 ## Commands
 
 ### `mzcld init`

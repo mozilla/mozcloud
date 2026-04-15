@@ -3,7 +3,7 @@ package jit
 import (
 	"fmt"
 
-	"github.com/charmbracelet/huh"
+	"charm.land/huh/v2"
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/pam"
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/ui"
 	"github.com/spf13/cobra"

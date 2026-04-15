@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -116,11 +117,12 @@ func (t *iapTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.Header.Set("Proxy-Authorization", "Bearer "+tok.AccessToken)
 
 	if ui.IsDebug() {
-		dump, err := httputil.DumpRequestOut(req, true)
+		dump, err := httputil.DumpRequestOut(req, false)
 		if err != nil {
 			ui.Debug("failed to dump request: " + err.Error())
 		} else {
-			ui.Debug("→ request:\n" + string(dump))
+			sanitized := redactAuthHeaders(string(dump))
+			ui.Debug("→ request:\n" + sanitized)
 		}
 	}
 
@@ -168,11 +170,19 @@ func runProxy(ctx context.Context, host string, port int, ts oauth2.TokenSource)
 
 	go func() {
 		<-ctx.Done()
-		srv.Shutdown(context.Background()) //nolint:errcheck
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		srv.Shutdown(shutdownCtx) //nolint:errcheck
 	}()
 
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
 	return nil
+}
+
+var authHeaderRe = regexp.MustCompile(`(?i)((?:Proxy-)?Authorization:\s*).+`)
+
+func redactAuthHeaders(dump string) string {
+	return authHeaderRe.ReplaceAllString(dump, "${1}[REDACTED]")
 }
