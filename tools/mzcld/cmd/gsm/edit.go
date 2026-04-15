@@ -3,6 +3,7 @@ package gsm
 import (
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -13,6 +14,9 @@ import (
 	"github.com/mozilla/mozcloud/tools/mzcld/internal/ui"
 	"github.com/spf13/cobra"
 )
+
+// ErrAborted is returned when the user cancels an interactive operation.
+var ErrAborted = errors.New("aborted")
 
 var editCmd = &cobra.Command{
 	Use:   "edit",
@@ -95,9 +99,7 @@ func runEdit(cmd *cobra.Command, _ []string) error {
 		}
 		defer os.Remove(tmp.Name()) //nolint:errcheck
 
-		if err := os.Chmod(tmp.Name(), 0o600); err != nil {
-			return fmt.Errorf("failed to set temp file permissions: %w", err)
-		}
+		// Go 1.16+ creates temp files with 0600 by default.
 		if _, err := tmp.Write(content); err != nil {
 			return fmt.Errorf("failed to write temp file: %w", err)
 		}
@@ -183,7 +185,7 @@ func editFileLoop(path string, validateJSON bool) error {
 			return err
 		}
 		if !tryAgain {
-			return fmt.Errorf("aborted")
+			return ErrAborted
 		}
 	}
 }

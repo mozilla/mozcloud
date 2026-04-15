@@ -73,6 +73,9 @@ func (c *Client) GetSecretVersion(ctx context.Context, projectID, secretName, ve
 	if err != nil {
 		return nil, fmt.Errorf("failed to access secret version: %w", err)
 	}
+	if resp.Payload == nil {
+		return nil, fmt.Errorf("secret version %s has no payload (may be destroyed)", version)
+	}
 	return resp.Payload.Data, nil
 }
 

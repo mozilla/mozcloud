@@ -95,6 +95,11 @@ func runDiff(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
+	if verA == verB {
+		ui.Info("Both versions are the same. Nothing to diff.")
+		return nil
+	}
+
 	var dataA, dataB []byte
 	var fetchErr error
 	runWithSpinner(ctx, fmt.Sprintf("Fetching versions %s and %s...", verA, verB), func() {

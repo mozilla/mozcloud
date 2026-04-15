@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"cloud.google.com/go/storage"
 	"charm.land/huh/v2"
@@ -33,6 +34,8 @@ const (
 	AuthModeADC AuthMode = "adc"
 )
 
+// activeAuthMode is set once in PersistentPreRunE before any command runs.
+// Not safe for concurrent writes; single-writer by design.
 var activeAuthMode AuthMode = AuthModeGcloud
 
 // SetAuthMode sets the global authentication mode.
@@ -52,19 +55,27 @@ func (g *gcloudTokenSource) Token() (*oauth2.Token, error) {
 	if err != nil {
 		return nil, fmt.Errorf("gcloud auth print-access-token failed: %w", err)
 	}
-	return &oauth2.Token{AccessToken: strings.TrimSpace(string(out))}, nil
+	return &oauth2.Token{
+		AccessToken: strings.TrimSpace(string(out)),
+		Expiry:      time.Now().Add(55 * time.Minute),
+	}, nil
 }
 
-// adcTokenSource uses Application Default Credentials.
-type adcTokenSource struct{}
+// adcTokenSource uses Application Default Credentials. Credentials are
+// discovered once on first call and the underlying token source is reused.
+type adcTokenSource struct {
+	ts oauth2.TokenSource
+}
 
 func (a *adcTokenSource) Token() (*oauth2.Token, error) {
-	ctx := context.Background()
-	creds, err := google.FindDefaultCredentials(ctx, "https://www.googleapis.com/auth/cloud-platform")
-	if err != nil {
-		return nil, fmt.Errorf("failed to find default credentials: %w", err)
+	if a.ts == nil {
+		creds, err := google.FindDefaultCredentials(context.Background(), "https://www.googleapis.com/auth/cloud-platform")
+		if err != nil {
+			return nil, fmt.Errorf("failed to find default credentials: %w", err)
+		}
+		a.ts = creds.TokenSource
 	}
-	return creds.TokenSource.Token()
+	return a.ts.Token()
 }
 
 // TokenSource returns the active token source based on the current auth mode.
