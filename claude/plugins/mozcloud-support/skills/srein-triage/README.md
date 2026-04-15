@@ -18,13 +18,12 @@ The skill uses the [Atlassian MCP server](https://github.com/atlassian/atlassian
 3. Search for **atlassian** and install it
 4. Follow the OAuth prompt to authenticate with your `mozilla-hub.atlassian.net` account in your browser
 
-### 2. Install the MozCloud Claude plugin
+### 2. Install the mozcloud-support plugin
 
-The skill is distributed as part of the MozCloud Claude plugin. Follow the installation steps at:
-
-https://github.com/mozilla/mozcloud/
-
-to install the `mozcloud-support` plugin.
+```bash
+claude plugin marketplace add mozilla/mozcloud
+claude plugin install mozcloud-support
+```
 
 ### 3. (Optional) Add recommended permissions
 

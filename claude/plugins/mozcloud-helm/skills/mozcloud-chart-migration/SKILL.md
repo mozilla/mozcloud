@@ -10,10 +10,11 @@ allowed-tools: Read, Grep, Glob, mcp__mozcloud
 
 This skill requires the **`mozcloud` MCP server** to be registered with Claude Code. It provides all Helm and migration tooling used throughout this workflow.
 
-If MCP tools (`migration_preflight_check`, `helm_template`, etc.) are unavailable, ask the user to run from the repository root:
+If MCP tools (`migration_preflight_check`, `helm_template`, etc.) are unavailable, ask the user to install the `mozcloud-helm` plugin:
 
 ```bash
-./claude/install.sh 
+claude plugin marketplace add mozilla/mozcloud
+claude plugin install mozcloud-helm
 ```
 
 ## General

@@ -42,42 +42,14 @@ Before installing this skill, ensure you have:
 
 ### Setup Instructions
 
-1. **Add the skill to your infra project's Claude skills directory:**
+Install via the MozCloud plugin marketplace:
 
-   You can either copy or symlink the skill. Symlinking is recommended if you want the skill to automatically stay in sync with updates in the mozcloud repository.
+```bash
+claude plugin marketplace add mozilla/mozcloud
+claude plugin install mozcloud-helm
+```
 
-   **Option A: Symlink (Recommended)**
-   ```bash
-   # From your infra repository root (e.g., sandbox-infra)
-   mkdir -p .claude/skills
-   ln -s /path/to/mozcloud/claude/skills/mozcloud-chart-migration .claude/skills/mozcloud-chart-migration
-   ```
-
-   **Option B: Copy**
-   ```bash
-   # From your infra repository root (e.g., sandbox-infra)
-   mkdir -p .claude/skills
-   cp -r /path/to/mozcloud/claude/skills/mozcloud-chart-migration .claude/skills/
-   ```
-
-   If you're already in the mozcloud repository and want to set up the symlink:
-   ```bash
-   # Navigate to your infra project
-   cd /path/to/sandbox-infra
-
-   # Create the symlink (adjust the path to mozcloud as needed)
-   mkdir -p .claude/skills
-   ln -s ../mozcloud/claude/skills/mozcloud-chart-migration .claude/skills/mozcloud-chart-migration
-   ```
-
-2. **Verify installation:**
-
-   ```bash
-   # Check that the skill is present
-   ls .claude/skills/mozcloud-chart-migration/SKILL.md
-   ```
-
-3. **Restart Claude Code** or run from the project directory to pick up the new skill.
+Restart Claude Code or run `/reload-plugins` to pick up the new skill.
 
 ## Usage
 

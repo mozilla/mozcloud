@@ -18,7 +18,7 @@ Claude Code plugin for MozCloud Helm chart migrations.
 
 ```bash
 # One-time: add the mozcloud marketplace
-claude plugin add-marketplace mozilla/mozcloud
+claude plugin marketplace add mozilla/mozcloud
 
 # Install this plugin
 claude plugin install mozcloud-helm

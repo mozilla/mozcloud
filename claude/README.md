@@ -26,40 +26,6 @@ The `mozcloud-helm` plugin requires building the MCP server binary:
 go install github.com/mozilla/mozcloud/tools/mozcloud-mcp@latest
 ```
 
-## Install via script (legacy)
-
-```bash
-./claude/install.sh
-```
-
-This will:
-- Symlink skills and agents into `~/.claude/` (user scope by default)
-- Install and register the `mozcloud-mcp` MCP server if not already present
-
-### Scope
-
-Use `--scope` to control where skills and agents are linked and at what scope the MCP server is registered.
-
-**User scope** (default) — available across all projects:
-
-```bash
-./claude/install.sh --scope user
-```
-
-**Project scope** — available only in this repo:
-
-```bash
-./claude/install.sh --scope project
-```
-
-### Update
-
-To upgrade the `mozcloud-mcp` binary to the latest published version:
-
-```bash
-./claude/install.sh --update
-```
-
 ## Available plugins
 
 | Plugin | Contents | Requirements |

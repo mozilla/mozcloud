@@ -1,1 +1,0 @@
-../plugins/mozcloud-helm/agents/mozcloud-helm-migrator.md
