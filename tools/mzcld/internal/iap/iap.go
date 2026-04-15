@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/mozilla/mozcloud/tools/mzcld/internal/gcp"
 	"golang.org/x/oauth2"
 	"google.golang.org/api/impersonate"
 )
@@ -68,7 +69,7 @@ func NewTokenSource(ctx context.Context, clientID, serviceAccountEmail string) (
 		Audience:        clientID,
 		TargetPrincipal: serviceAccountEmail,
 		IncludeEmail:    true,
-	})
+	}, gcp.ClientOption())
 	if err != nil {
 		return nil, fmt.Errorf(
 			"create impersonated token source: %w\n\n"+

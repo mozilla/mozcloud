@@ -9,6 +9,7 @@ import (
 
 	pamsdk "cloud.google.com/go/privilegedaccessmanager/apiv1"
 	pamv1pb "cloud.google.com/go/privilegedaccessmanager/apiv1/privilegedaccessmanagerpb"
+	"github.com/mozilla/mozcloud/tools/mzcld/internal/gcp"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
@@ -18,7 +19,7 @@ type Grant = pamv1pb.Grant
 type Entitlement = pamv1pb.Entitlement
 
 func newClient(ctx context.Context) (*pamsdk.Client, error) {
-	return pamsdk.NewClient(ctx)
+	return pamsdk.NewClient(ctx, gcp.ClientOption())
 }
 
 // entitlementResourceName returns the PAM resource name for an entitlement.
@@ -93,12 +94,30 @@ func RevokeGrant(ctx context.Context, grantName string) error {
 
 // --- Grant helpers -----------------------------------------------------------
 
+// activationTime returns the time the grant was activated by scanning the
+// timeline for an Activated event. Falls back to UpdateTime if no activation
+// event is found (e.g. auto-approved grants).
+func activationTime(g *Grant) time.Time {
+	if tl := g.GetTimeline(); tl != nil {
+		for _, ev := range tl.GetEvents() {
+			if ev.GetActivated() != nil && ev.GetEventTime() != nil {
+				return ev.GetEventTime().AsTime()
+			}
+		}
+	}
+	if g.GetUpdateTime() != nil {
+		return g.GetUpdateTime().AsTime()
+	}
+	return time.Time{}
+}
+
 // IsExpired reports whether the grant has passed its end time.
 func IsExpired(g *Grant) bool {
-	if g.GetUpdateTime() == nil || g.GetRequestedDuration() == nil {
+	start := activationTime(g)
+	if start.IsZero() || g.GetRequestedDuration() == nil {
 		return false
 	}
-	end := g.GetUpdateTime().AsTime().Add(g.GetRequestedDuration().AsDuration())
+	end := start.Add(g.GetRequestedDuration().AsDuration())
 	return time.Now().After(end)
 }
 
@@ -109,10 +128,11 @@ func IsApprovalAwaited(g *Grant) bool {
 
 // TimeRemaining returns the duration until the grant expires.
 func TimeRemaining(g *Grant) time.Duration {
-	if g.GetUpdateTime() == nil || g.GetRequestedDuration() == nil {
+	start := activationTime(g)
+	if start.IsZero() || g.GetRequestedDuration() == nil {
 		return 0
 	}
-	end := g.GetUpdateTime().AsTime().Add(g.GetRequestedDuration().AsDuration())
+	end := start.Add(g.GetRequestedDuration().AsDuration())
 	return time.Until(end)
 }
 
