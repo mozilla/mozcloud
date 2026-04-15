@@ -22,7 +22,9 @@ The skill uses the [Atlassian MCP server](https://github.com/atlassian/atlassian
 
 The skill is distributed as part of the MozCloud Claude plugin. Follow the installation steps at:
 
-https://github.com/mozilla/mozcloud/tree/main/claude
+https://github.com/mozilla/mozcloud/
+
+to install the `mozcloud-support` plugin.
 
 ### 3. (Optional) Add recommended permissions
 
@@ -52,7 +54,7 @@ Run the skill in Claude Code:
 /srein-triage
 ```
 
-This goes through all the issues in the SREIN Jira project in Backlog and Needs Clarification status and generates a report as an HTML file. For each issue, it summarizes the support request, goes through the triage steps, finds relevant documentation in the SRE confluence space (runbooks, howtos, etc), and outputs triage suggestions.
+This goes through all the issues in the SREIN Jira project in Backlog and Needs Clarification status and generates a report as an HTML file. For each issue, it summarizes the support request, goes through the triage steps, finds relevant documentation in the SRE Confluence space (runbooks, howtos, etc), and outputs triage suggestions.
 
 This HTML file can be shared in a Daily Intake and Triage meeting to aid in triaging.
 
@@ -61,7 +63,6 @@ To triage a single issue:
 ```
 /srein-triage SREIN-1127
 ```
-
 
 ## Output
 
@@ -111,12 +112,15 @@ The skill is suggestion-only -- it never modifies tickets, adds comments, or cha
 
 ## Improving triage suggestions
 
-This will fetch the latest content in the [MozCloud Intake and Triage](https://mozilla-hub.atlassian.net/wiki/spaces/SRE/pages/1560838234/MozCloud+Intake+and+Triage) and [MozCloud Triage FAQ](https://mozilla-hub.atlassian.net/wiki/spaces/SRE/pages/2439807017/MozCloud+Triage+FAQ) pages. When we make changes to those pages (add additional steps, adjust guidance, clarify edge cases, etc), they will be available in the next `/srein-triage` run.
+This skill will fetch the latest content from the [MozCloud Intake and Triage](https://mozilla-hub.atlassian.net/wiki/spaces/SRE/pages/1560838234/MozCloud+Intake+and+Triage) and [MozCloud Triage FAQ](https://mozilla-hub.atlassian.net/wiki/spaces/SRE/pages/2439807017/MozCloud+Triage+FAQ) pages. When we make changes to those pages (add additional steps, adjust guidance, clarify edge cases, etc), they will be available in the next `/srein-triage` run.
+
+This skill also searches the SRE Confluence space.
 
 To improve triage suggestions:
 
-1. Try editing the MozCloud Intake and Triage and MozCloud Triage FAQ pages first.
-2. Adjust the SKILL.md file.
+1. Look at editing the MozCloud Intake and Triage and MozCloud Triage FAQ pages. What's not clear/correct that caused srein-triage to suggest the wrong thing?
+2. Look at editing relevant documentation. Did srein-triage use information from an obsolete/outdated page?
+2. Adjust the SKILL.md file. This should be a last resort--the SKILL.md file shouldn't be a source of truth for how MozCloud works and how we manage it.
 
 ## Known limitations
 
