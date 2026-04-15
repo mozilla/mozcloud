@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 
 	"cloud.google.com/go/storage"
@@ -62,18 +63,24 @@ func (g *gcloudTokenSource) Token() (*oauth2.Token, error) {
 }
 
 // adcTokenSource uses Application Default Credentials. Credentials are
-// discovered once on first call and the underlying token source is reused.
+// discovered exactly once (thread-safe) and the underlying token source is reused.
 type adcTokenSource struct {
-	ts oauth2.TokenSource
+	once    sync.Once
+	ts      oauth2.TokenSource
+	initErr error
 }
 
 func (a *adcTokenSource) Token() (*oauth2.Token, error) {
-	if a.ts == nil {
+	a.once.Do(func() {
 		creds, err := google.FindDefaultCredentials(context.Background(), "https://www.googleapis.com/auth/cloud-platform")
 		if err != nil {
-			return nil, fmt.Errorf("failed to find default credentials: %w", err)
+			a.initErr = fmt.Errorf("failed to find default credentials: %w", err)
+			return
 		}
 		a.ts = creds.TokenSource
+	})
+	if a.initErr != nil {
+		return nil, a.initErr
 	}
 	return a.ts.Token()
 }
