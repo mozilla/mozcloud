@@ -85,12 +85,24 @@ func (a *adcTokenSource) Token() (*oauth2.Token, error) {
 	return a.ts.Token()
 }
 
-// TokenSource returns the active token source based on the current auth mode.
+var (
+	tokenSourceOnce sync.Once
+	cachedTS        oauth2.TokenSource
+)
+
+// TokenSource returns a shared, token-caching source for the active auth mode.
+// The underlying source is created once; oauth2.ReuseTokenSource handles refresh.
 func TokenSource() oauth2.TokenSource {
-	if activeAuthMode == AuthModeADC {
-		return &adcTokenSource{}
-	}
-	return &gcloudTokenSource{}
+	tokenSourceOnce.Do(func() {
+		var base oauth2.TokenSource
+		if activeAuthMode == AuthModeADC {
+			base = &adcTokenSource{}
+		} else {
+			base = &gcloudTokenSource{}
+		}
+		cachedTS = oauth2.ReuseTokenSource(nil, base)
+	})
+	return cachedTS
 }
 
 // ClientOption returns a google API client option using the active auth mode.

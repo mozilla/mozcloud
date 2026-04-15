@@ -72,7 +72,7 @@ func runDiff(cmd *cobra.Command, _ []string) error {
 			if err := huh.NewForm(
 				huh.NewGroup(
 					huh.NewSelect[string]().
-						Title("First version (older)").
+						Title("Version A (listed newest first)").
 						Options(opts...).
 						Value(&verA),
 				),
@@ -85,7 +85,7 @@ func runDiff(cmd *cobra.Command, _ []string) error {
 			if err := huh.NewForm(
 				huh.NewGroup(
 					huh.NewSelect[string]().
-						Title("Second version (newer)").
+						Title("Version B (listed newest first)").
 						Options(opts...).
 						Value(&verB),
 				),

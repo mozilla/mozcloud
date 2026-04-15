@@ -181,7 +181,7 @@ func runProxy(ctx context.Context, host string, port int, ts oauth2.TokenSource)
 	return nil
 }
 
-var authHeaderRe = regexp.MustCompile(`(?i)((?:Proxy-)?Authorization:\s*)(\S+)`)
+var authHeaderRe = regexp.MustCompile(`(?i)((?:Proxy-)?Authorization:\s*).+`)
 
 func redactAuthHeaders(dump string) string {
 	return authHeaderRe.ReplaceAllString(dump, "${1}[REDACTED]")

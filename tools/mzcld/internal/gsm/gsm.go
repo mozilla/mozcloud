@@ -30,7 +30,7 @@ type Client struct {
 	sm *secretmanager.Client
 }
 
-// NewClient creates a new GSM client using gcloud token auth.
+// NewClient creates a new GSM client using the active GCP auth mode.
 func NewClient(ctx context.Context) (*Client, error) {
 	sm, err := secretmanager.NewClient(ctx, gcp.ClientOption())
 	if err != nil {
