@@ -110,11 +110,14 @@ srein-triage/
 
 The skill is suggestion-only -- it never modifies tickets, adds comments, or changes status.
 
+
 ## Improving triage suggestions
 
-This skill will fetch the latest content from the [MozCloud Intake and Triage](https://mozilla-hub.atlassian.net/wiki/spaces/SRE/pages/1560838234/MozCloud+Intake+and+Triage) and [MozCloud Triage FAQ](https://mozilla-hub.atlassian.net/wiki/spaces/SRE/pages/2439807017/MozCloud+Triage+FAQ) pages. When we make changes to those pages (add additional steps, adjust guidance, clarify edge cases, etc), they will be available in the next `/srein-triage` run.
+The skill sometimes generates bad advice.
 
-This skill also searches the SRE Confluence space.
+This skill will fetch the latest content from the [MozCloud Intake and Triage](https://mozilla-hub.atlassian.net/wiki/spaces/SRE/pages/1560838234/MozCloud+Intake+and+Triage) and [MozCloud Triage FAQ](https://mozilla-hub.atlassian.net/wiki/spaces/SRE/pages/2439807017/MozCloud+Triage+FAQ) pages. When we make changes to those pages (add additional steps, adjust guidance, clarify edge cases, etc), they will be available in the next srein-triage run.
+
+This skill also searches the SRE Confluence space. When we make changes to Confluence pages, they will be available in the next srein-triage run.
 
 To improve triage suggestions:
 
