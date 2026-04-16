@@ -52,6 +52,7 @@ The mozcloud chart expects values in this general structure:
 global:
   mozcloud:
     app_code: myapp          # Used for SA name, labels
+    chart: myapp             # Required — must match the chart name
     env_code: dev
     project_id: my-gcp-project
     realm: nonprod           # nonprod or prod
@@ -227,6 +228,59 @@ hosts:
 
 Note: `connectionDraining` is not supported in mozcloud. Keep a custom BackendConfig template if it is required.
 
+## ExternalSecrets: Default Auto-Injection vs Explicit Secrets
+
+mozcloud has two separate mechanisms for injecting secrets into containers:
+
+### 1. Default ExternalSecret auto-injection (Deployment template)
+
+When `externalSecrets.default.enabled: true` (the default), mozcloud:
+- Automatically creates an ExternalSecret named `{chart}-secrets` pulling from `{env_code}-gke-app-secrets` in GSM
+- Automatically adds `secretRef: name: {chart}-secrets` to **every** container's `envFrom` in the workload
+
+You do **not** need to list the default secret in the container's `secrets:` array.
+
+### 2. Explicit container secrets
+
+The `secrets: [name]` array in a container config is for secrets **beyond** the default, or for job containers (which have no auto-injection). The job template does not auto-inject the default secret.
+
+### Workload containers vs job containers
+
+Workload containers (Deployments/Rollouts) get the default secret auto-injected — listing it in `secrets:` is harmless (the chart deduplicates) but unnecessary. Only list **additional** secrets beyond the default.
+
+Job containers do **not** get auto-injection. You must explicitly list all secrets (including the default) in the job container's `secrets:` array:
+
+```yaml
+# Workload container — default secret auto-injected, no need to list it
+containers:
+  myapp:
+    configMaps: [myapp-config]
+    # No secrets: array needed; default ExternalSecret handles it
+
+# Job container — must list all secrets explicitly
+tasks:
+  jobs:
+    my-job:
+      containers:
+        my-job:
+          configMaps: [myapp-config]
+          secrets: [myapp-secrets]   # Required here — no auto-injection in jobs
+```
+
+### targetPort Override for Non-HTTP Container Names
+
+mozcloud derives the container port name from the container name using RFC6335 normalization (via `mozcloud.portName()`). A container named `ctms` gets a port named `ctms`. The Service defaults to `targetPort: http`, which won't match.
+
+When the container name is not `http`, add `targetPort` to the host config:
+
+```yaml
+hosts:
+  ctms:
+    type: external
+    api: ingress
+    targetPort: ctms    # Must match the container port name (= container name)
+```
+
 ## Known Mozcloud Limitations
 
 The following configurations from custom templates are **not currently supported** in mozcloud. Document each as an accepted difference in `CHANGES_$ENV.md` and consider filing feature requests:
@@ -243,6 +297,7 @@ The following configurations from custom templates are **not currently supported
 | `BackendConfig.healthCheck` | Not supported | NEG health checks are used instead. |
 | `PodDisruptionBudget` | Not generated | Keep as a custom template (ungated — does not duplicate any mozcloud resource). |
 | `nginx.enabled: false` (with GKE Ingress) | Not supported | mozcloud's Service always targets port `8080` named `http`, which requires the nginx sidecar. Without nginx, the pod has no port named `http` and traffic cannot reach the app. **Always keep `nginx.enabled: true` (the default) for any workload with a GKE Ingress host.** |
+| Job `imagePullPolicy` | Changed to `Always` when image has digest | When `global.mozcloud.image.tag` contains a digest (`sha256:...`), mozcloud forces `imagePullPolicy: Always`. |
 
 ## Troubleshooting Chart Issues
 

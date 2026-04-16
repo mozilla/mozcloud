@@ -367,12 +367,38 @@ When continuing work on an existing migration:
    - Identify dependencies in `Chart.yaml`
    - Check if mozcloud is already a dependency (e.g. from a prior preview environment migration) — if so, only update the version if needed rather than adding a duplicate entry
 
-3. **Capture current manifests:**
+3. **Determine the Helm release name:**
+
+   The Helm release name controls how custom templates name their resources (e.g. `{{ include "application.fullname" . }}` produces `<release>-<chart>`). If the release name differs from the chart name, all resource names will have a prefix — and render-diff comparisons will be wrong unless you pass the correct `release_name`.
+
+   **Where to find it:** Fetch the tenant config from the `global-platform-admin` GitHub repository using the `WebFetch` tool:
+   ```
+   https://raw.githubusercontent.com/mozilla/global-platform-admin/main/argo/k8s/argocd-bootstrap/tenants/<app_code>.yaml
+   ```
+
+   Look for `release_name` under each environment's chart config:
+   ```yaml
+   realms:
+     nonprod:
+       environments:
+         - name: stage
+           charts:
+             <chart>:
+               release_name: gha   # <-- this becomes spec.source.helm.releaseName in ArgoCD
+   ```
+
+   The ArgoCD ApplicationSet template (`applicationsets.yaml`) reads this field and sets `spec.source.helm.releaseName`. If `release_name` is absent, ArgoCD defaults to the chart name — in that case, `$RELEASE_NAME` equals `$CHART_NAME` and no special handling is needed.
+
+   **Store the release name** as `$RELEASE_NAME` for use in all subsequent `helm_template` and `render_diff` calls. If it matches the chart name, no special handling is needed.
+
+4. **Capture current manifests:**
    - Render the helm chart using `helm_template` with:
      - `chart_path`: `$CHART_DIR`
+     - `release_name`: `$RELEASE_NAME` (from step above)
      - `values_files`: `["$CHART_DIR/values.yaml", "$CHART_DIR/values-$ENV.yaml"]`
    - Write the returned manifests to `$CHART_DIR/.migration/manifests/$ENV/original.yaml`
    - Note the `resource_count` from the tool response — this is the baseline to preserve
+   - **Inspect the resource names** in the output. If they have a prefix (e.g. `gha-ctms-web` instead of `ctms-web`), this confirms the release name is correct and informs which names to preserve in your mozcloud configuration.
 
 4. **Create initial diff analysis template:**
    - Create `.migration/DIFF_ANALYSIS_$ENV.md` with structure:
@@ -463,6 +489,12 @@ When continuing work on an existing migration:
          Mozcloud: workloads.<tenant>-<component>-worker (NOT workloads.<component>-worker)
          ```
        - **Minimizing resource name changes is a PRIMARY goal, not optional**
+       - **When release_name differs from the chart name**: the original resources will have a `<release_name>-` prefix (e.g. `gha-ctms-web`). Use the original rendered manifests (captured in step 4 with the correct `release_name`) to identify the actual names on the cluster. Preserve traffic-critical resources by matching workload/host/configMap keys to those names:
+         - Ingress name → match the `hosts:` key
+         - ServiceAccount name → use custom `serviceAccounts:` config with `gcpServiceAccount.name`
+         - ConfigMap name → match the `configMaps:` key
+         - Service name → match the workload key (workload key = Service name in mozcloud)
+         - Deployment name → match the workload key (changing this is acceptable when selector labels change anyway)
 
 7. **Update the tenant file:**
    - After migrating to `global.mozcloud.image.repository` and `global.mozcloud.image.tag`, the tenant file in the `global-platform-admin` repository must be updated so ArgoCD Image Updater writes image tags to the correct Helm parameter paths.
@@ -510,6 +542,7 @@ After completing the migration, perform these validation steps in order:
 1. **Semantic Diff Check**:
    Call `render_diff` with:
    - `chart_path`: `$CHART_DIR`
+   - `release_name`: `$RELEASE_NAME` (from the tenant config lookup in "Starting a New Migration Plan")
    - `values_files`: `["$CHART_DIR/values.yaml", "$CHART_DIR/values-$ENV.yaml"]`
    - `semantic`: `true`
    - `update_dependencies`: `true`
