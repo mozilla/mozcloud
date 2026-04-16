@@ -52,6 +52,7 @@ The mozcloud chart expects values in this general structure:
 global:
   mozcloud:
     app_code: myapp          # Used for SA name, labels
+    chart: myapp             # Required — must match the chart name
     env_code: dev
     project_id: my-gcp-project
     realm: nonprod           # nonprod or prod
@@ -193,7 +194,7 @@ mozcloud:
 - Service annotation: `beta.cloud.google.com/backend-config` → `cloud.google.com/backend-config` (deprecated → current)
 - HPA: `autoscaling/v1` → `autoscaling/v2` (same name, API version upgrade)
 - FrontendConfig gains `redirectToHttps: true` (mozcloud default — enables HTTP→HTTPS redirect)
-- ManagedCertificate name is auto-derived from domain (`mcrt-<env>-<domain-with-dashes>`) — **unavoidable name change**, old cert needs manual deletion post-deploy
+- ManagedCertificate name is auto-derived from domain (`mcrt-<domain-with-dashes>`) by default — use `tls.certs` to preserve the original name (see "Preserving ManagedCertificate Name" below)
 
 ### Preserving ServiceAccount Name
 
@@ -213,6 +214,27 @@ mozcloud:
       serviceAccount: <original-sa-name>  # Reference the custom SA in each workload
 ```
 
+### Preserving ManagedCertificate Name
+
+By default mozcloud auto-generates ManagedCertificate names from the domain (`mcrt-<domain-with-dashes>`). This will differ from the original chart's cert name, causing a new certificate to be provisioned (which can take minutes to hours).
+
+Always specify the existing cert name in `tls.certs` to perform an in-place replacement:
+
+```yaml
+hosts:
+  myapp:
+    api: ingress
+    tls:
+      type: ManagedCertificate
+      create: true
+      certs:
+        - my-original-cert-name    # Preserves the existing cert — no reprovisioning
+```
+
+Mozcloud creates a ManagedCertificate with that exact name, matching what's already on the cluster. No provisioning delay.
+
+**Post-migration note for generic cert names:** If the original cert has a generic name (e.g. `managed-certificate`), add a TODO to the migration report: after the migration is stable, provision a new cert with a meaningful name by adding it to the `tls.certs` array alongside the old name, then remove the generic entry and prune the old ManagedCertificate via ArgoCD once the new cert is active.
+
 ### BackendConfig Options (GKE Ingress)
 
 `timeoutSec` and log sampling are configured via `options` on the host:
@@ -226,6 +248,59 @@ hosts:
 ```
 
 Note: `connectionDraining` is not supported in mozcloud. Keep a custom BackendConfig template if it is required.
+
+## ExternalSecrets: Default Auto-Injection vs Explicit Secrets
+
+mozcloud has two separate mechanisms for injecting secrets into containers:
+
+### 1. Default ExternalSecret auto-injection (Deployment template)
+
+When `externalSecrets.default.enabled: true` (the default), mozcloud:
+- Automatically creates an ExternalSecret named `{chart}-secrets` pulling from `{env_code}-gke-app-secrets` in GSM
+- Automatically adds `secretRef: name: {chart}-secrets` to **every** container's `envFrom` in the workload
+
+You do **not** need to list the default secret in the container's `secrets:` array.
+
+### 2. Explicit container secrets
+
+The `secrets: [name]` array in a container config is for secrets **beyond** the default, or for job containers (which have no auto-injection). The job template does not auto-inject the default secret.
+
+### Workload containers vs job containers
+
+Workload containers (Deployments/Rollouts) get the default secret auto-injected — listing it in `secrets:` is harmless (the chart deduplicates) but unnecessary. Only list **additional** secrets beyond the default.
+
+Job containers do **not** get auto-injection. You must explicitly list all secrets (including the default) in the job container's `secrets:` array:
+
+```yaml
+# Workload container — default secret auto-injected, no need to list it
+containers:
+  myapp:
+    configMaps: [myapp-config]
+    # No secrets: array needed; default ExternalSecret handles it
+
+# Job container — must list all secrets explicitly
+tasks:
+  jobs:
+    my-job:
+      containers:
+        my-job:
+          configMaps: [myapp-config]
+          secrets: [myapp-secrets]   # Required here — no auto-injection in jobs
+```
+
+## targetPort Override for Non-HTTP Container Names
+
+mozcloud derives the container port name from the container name using RFC6335 normalization (via `mozcloud.portName()`). A container named `myapp` gets a port named `myapp`. The Service defaults to `targetPort: http`, which won't match.
+
+When the container name is not `http`, add `targetPort` to the host config:
+
+```yaml
+hosts:
+  myapp:
+    type: external
+    api: ingress
+    targetPort: myapp    # Must match the container port name (= container name)
+```
 
 ## Known Mozcloud Limitations
 
@@ -243,6 +318,7 @@ The following configurations from custom templates are **not currently supported
 | `BackendConfig.healthCheck` | Not supported | NEG health checks are used instead. |
 | `PodDisruptionBudget` | Not generated | Keep as a custom template (ungated — does not duplicate any mozcloud resource). |
 | `nginx.enabled: false` (with GKE Ingress) | Not supported | mozcloud's Service always targets port `8080` named `http`, which requires the nginx sidecar. Without nginx, the pod has no port named `http` and traffic cannot reach the app. **Always keep `nginx.enabled: true` (the default) for any workload with a GKE Ingress host.** |
+| Job `imagePullPolicy` | Changed to `Always` when image has digest | When `global.mozcloud.image.tag` contains a digest (`sha256:...`), mozcloud forces `imagePullPolicy: Always`. |
 
 ## Troubleshooting Chart Issues
 
