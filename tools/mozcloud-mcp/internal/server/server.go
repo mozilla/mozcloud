@@ -26,6 +26,7 @@ func New(version string, allowedWriteRoots []string) *mcpserver.MCPServer {
 	s.AddTool(
 		mcp.NewTool("helm_chart_latest_version",
 			mcp.WithDescription("Fetch the latest version (and available versions) of a Helm chart from an OCI registry"),
+			mcp.WithReadOnlyHintAnnotation(true),
 			mcp.WithString("repository",
 				mcp.Required(),
 				mcp.Description("OCI registry base URL, e.g. us-west1-docker.pkg.dev/my-project/charts"),
@@ -44,6 +45,7 @@ func New(version string, allowedWriteRoots []string) *mcpserver.MCPServer {
 	s.AddTool(
 		mcp.NewTool("oci_check_auth",
 			mcp.WithDescription("Check whether the local Docker credential store has an entry for an OCI registry"),
+			mcp.WithReadOnlyHintAnnotation(true),
 			mcp.WithString("registry",
 				mcp.Required(),
 				mcp.Description("Registry hostname, e.g. us-west1-docker.pkg.dev"),
@@ -55,6 +57,7 @@ func New(version string, allowedWriteRoots []string) *mcpserver.MCPServer {
 	s.AddTool(
 		mcp.NewTool("helm_chart_read_file",
 			mcp.WithDescription("Read one or more files from a local .tgz Helm chart archive; file_path supports glob patterns"),
+			mcp.WithReadOnlyHintAnnotation(true),
 			mcp.WithString("tgz_path",
 				mcp.Required(),
 				mcp.Description("Path to the local .tgz chart archive, e.g. charts/mozcloud-0.9.0.tgz"),
@@ -70,6 +73,7 @@ func New(version string, allowedWriteRoots []string) *mcpserver.MCPServer {
 	s.AddTool(
 		mcp.NewTool("helm_show_values",
 			mcp.WithDescription("Show the default values.yaml for a Helm chart from an OCI registry"),
+			mcp.WithReadOnlyHintAnnotation(true),
 			mcp.WithString("repository",
 				mcp.Required(),
 				mcp.Description("OCI registry base URL"),
@@ -88,6 +92,7 @@ func New(version string, allowedWriteRoots []string) *mcpserver.MCPServer {
 	s.AddTool(
 		mcp.NewTool("helm_show_schema",
 			mcp.WithDescription("Retrieve the values.schema.json from a Helm chart in an OCI registry"),
+			mcp.WithReadOnlyHintAnnotation(true),
 			mcp.WithString("repository",
 				mcp.Required(),
 				mcp.Description("OCI registry base URL"),
@@ -108,6 +113,7 @@ func New(version string, allowedWriteRoots []string) *mcpserver.MCPServer {
 	s.AddTool(
 		mcp.NewTool("helm_template",
 			mcp.WithDescription("Render Helm chart templates locally and return the resulting Kubernetes manifests"),
+			mcp.WithReadOnlyHintAnnotation(true),
 			mcp.WithString("chart_path",
 				mcp.Required(),
 				mcp.Description("Path to the Helm chart directory"),
@@ -132,6 +138,7 @@ func New(version string, allowedWriteRoots []string) *mcpserver.MCPServer {
 	s.AddTool(
 		mcp.NewTool("helm_lint",
 			mcp.WithDescription("Run helm lint on a chart and return errors and warnings"),
+			mcp.WithReadOnlyHintAnnotation(true),
 			mcp.WithString("chart_path",
 				mcp.Required(),
 				mcp.Description("Path to the Helm chart directory"),
@@ -196,6 +203,7 @@ func New(version string, allowedWriteRoots []string) *mcpserver.MCPServer {
 	s.AddTool(
 		mcp.NewTool("render_diff",
 			mcp.WithDescription("Render a Helm chart and diff it against a git ref using the render-diff binary"),
+			mcp.WithReadOnlyHintAnnotation(true),
 			mcp.WithString("chart_path",
 				mcp.Required(),
 				mcp.Description("Path to the Helm chart directory"),
@@ -223,6 +231,7 @@ func New(version string, allowedWriteRoots []string) *mcpserver.MCPServer {
 	s.AddTool(
 		mcp.NewTool("render_manifests",
 			mcp.WithDescription("Render a Helm chart and return the resulting Kubernetes manifests without diffing"),
+			mcp.WithReadOnlyHintAnnotation(true),
 			mcp.WithString("chart_path",
 				mcp.Required(),
 				mcp.Description("Path to the Helm chart directory"),
@@ -246,6 +255,7 @@ func New(version string, allowedWriteRoots []string) *mcpserver.MCPServer {
 	s.AddTool(
 		mcp.NewTool("schema_validate_values",
 			mcp.WithDescription("Validate Helm values against a JSON schema"),
+			mcp.WithReadOnlyHintAnnotation(true),
 			mcp.WithString("values_yaml",
 				mcp.Description("Inline YAML values string"),
 			),
@@ -267,6 +277,7 @@ func New(version string, allowedWriteRoots []string) *mcpserver.MCPServer {
 	s.AddTool(
 		mcp.NewTool("migration_preflight_check",
 			mcp.WithDescription("Run preflight checks before a mozcloud migration: verifies helm, render-diff, OCI auth, and git cleanliness"),
+			mcp.WithReadOnlyHintAnnotation(true),
 			mcp.WithString("chart_path",
 				mcp.Required(),
 				mcp.Description("Path to the Helm chart directory"),
@@ -281,6 +292,7 @@ func New(version string, allowedWriteRoots []string) *mcpserver.MCPServer {
 	s.AddTool(
 		mcp.NewTool("migration_read_status",
 			mcp.WithDescription("Read the .migration/STATUS.md and .migration/README.md files from a chart directory"),
+			mcp.WithReadOnlyHintAnnotation(true),
 			mcp.WithString("chart_path",
 				mcp.Required(),
 				mcp.Description("Path to the Helm chart directory"),
@@ -292,6 +304,7 @@ func New(version string, allowedWriteRoots []string) *mcpserver.MCPServer {
 	s.AddTool(
 		mcp.NewTool("chart_read_metadata",
 			mcp.WithDescription("Read and parse Chart.yaml from a Helm chart directory"),
+			mcp.WithReadOnlyHintAnnotation(true),
 			mcp.WithString("chart_path",
 				mcp.Required(),
 				mcp.Description("Path to the Helm chart directory"),
@@ -303,6 +316,7 @@ func New(version string, allowedWriteRoots []string) *mcpserver.MCPServer {
 	s.AddTool(
 		mcp.NewTool("values_list_environments",
 			mcp.WithDescription("List values files matching values*.yaml in a chart directory to discover environments"),
+			mcp.WithReadOnlyHintAnnotation(true),
 			mcp.WithString("chart_path",
 				mcp.Required(),
 				mcp.Description("Path to the Helm chart directory"),
