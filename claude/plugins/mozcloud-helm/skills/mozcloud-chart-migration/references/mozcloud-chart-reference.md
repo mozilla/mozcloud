@@ -267,18 +267,18 @@ tasks:
           secrets: [myapp-secrets]   # Required here — no auto-injection in jobs
 ```
 
-### targetPort Override for Non-HTTP Container Names
+## targetPort Override for Non-HTTP Container Names
 
-mozcloud derives the container port name from the container name using RFC6335 normalization (via `mozcloud.portName()`). A container named `ctms` gets a port named `ctms`. The Service defaults to `targetPort: http`, which won't match.
+mozcloud derives the container port name from the container name using RFC6335 normalization (via `mozcloud.portName()`). A container named `myapp` gets a port named `myapp`. The Service defaults to `targetPort: http`, which won't match.
 
 When the container name is not `http`, add `targetPort` to the host config:
 
 ```yaml
 hosts:
-  ctms:
+  myapp:
     type: external
     api: ingress
-    targetPort: ctms    # Must match the container port name (= container name)
+    targetPort: myapp    # Must match the container port name (= container name)
 ```
 
 ## Known Mozcloud Limitations

@@ -345,7 +345,7 @@ When continuing work on an existing migration:
    - If there is no `values-dev.yaml`, try `values-stage.yaml`
    - If neither exists, check which values files are available and prompt for selection
 
-2. **Check ArgoCD Image Updater state:**
+3. **Check ArgoCD Image Updater state:**
    - ArgoCD Image Updater automatically manages image tags for each environment. The currently deployed image is written back to a file matching the pattern:
      `.argocd-source-$TENANT-$ENV-$REGION-$CHARTNAME.yaml`
      For example: `.argocd-source-<tenant>-<env>-<region>-<chartname>.yaml`
@@ -361,13 +361,13 @@ When continuing work on an existing migration:
    - Use these values to populate `global.mozcloud.image.repository` and `global.mozcloud.image.tag` in the environment values file, so the migrated chart starts from the same image that is currently running — not a hardcoded `latest`.
    - If the file does not exist or contains no image parameters, fall back to whatever the existing values files specify.
 
-2. **Understand current state:**
+4. **Understand current state:**
    - Read the custom helm chart's templates
    - Note any custom resources, helpers, or special configurations
    - Identify dependencies in `Chart.yaml`
    - Check if mozcloud is already a dependency (e.g. from a prior preview environment migration) — if so, only update the version if needed rather than adding a duplicate entry
 
-3. **Determine the Helm release name:**
+5. **Determine the Helm release name:**
 
    The Helm release name controls how custom templates name their resources (e.g. `{{ include "application.fullname" . }}` produces `<release>-<chart>`). If the release name differs from the chart name, all resource names will have a prefix — and render-diff comparisons will be wrong unless you pass the correct `release_name`.
 
@@ -391,7 +391,7 @@ When continuing work on an existing migration:
 
    **Store the release name** as `$RELEASE_NAME` for use in all subsequent `helm_template` and `render_diff` calls. If it matches the chart name, no special handling is needed.
 
-4. **Capture current manifests:**
+6. **Capture current manifests:**
    - Render the helm chart using `helm_template` with:
      - `chart_path`: `$CHART_DIR`
      - `release_name`: `$RELEASE_NAME` (from step above)
@@ -400,7 +400,7 @@ When continuing work on an existing migration:
    - Note the `resource_count` from the tool response — this is the baseline to preserve
    - **Inspect the resource names** in the output. If they have a prefix (e.g. `gha-ctms-web` instead of `ctms-web`), this confirms the release name is correct and informs which names to preserve in your mozcloud configuration.
 
-4. **Create initial diff analysis template:**
+7. **Create initial diff analysis template:**
    - Create `.migration/DIFF_ANALYSIS_$ENV.md` with structure:
    ```markdown
    # Diff Analysis: $ENV Environment
@@ -421,7 +421,7 @@ When continuing work on an existing migration:
    - TBD (will be populated after migration)
    ```
 
-5. **Create migration plan:**
+8. **Create migration plan:**
    - Save the migration plan in `.migration/MIGRATION_PLAN_$ENV.md`
    - Include:
      - Current state analysis
@@ -432,7 +432,7 @@ When continuing work on an existing migration:
      - Testing strategy
    - **Prompt for user review before continuing**
 
-6. **Execute migration:**
+9. **Execute migration:**
 
    **Resource Name Preservation (Mandatory)**
 
@@ -489,14 +489,14 @@ When continuing work on an existing migration:
          Mozcloud: workloads.<tenant>-<component>-worker (NOT workloads.<component>-worker)
          ```
        - **Minimizing resource name changes is a PRIMARY goal, not optional**
-       - **When release_name differs from the chart name**: the original resources will have a `<release_name>-` prefix (e.g. `gha-ctms-web`). Use the original rendered manifests (captured in step 4 with the correct `release_name`) to identify the actual names on the cluster. Preserve traffic-critical resources by matching workload/host/configMap keys to those names:
+       - **When release_name differs from the chart name**: the original resources will have a `<release_name>-` prefix (e.g. `gha-ctms-web`). Use the original rendered manifests (captured in step 6 with the correct `release_name`) to identify the actual names on the cluster. Preserve traffic-critical resources by matching workload/host/configMap keys to those names:
          - Ingress name → match the `hosts:` key
          - ServiceAccount name → use custom `serviceAccounts:` config with `gcpServiceAccount.name`
          - ConfigMap name → match the `configMaps:` key
          - Service name → match the workload key (workload key = Service name in mozcloud)
          - Deployment name → match the workload key (changing this is acceptable when selector labels change anyway)
 
-7. **Update the tenant file:**
+10. **Update the tenant file:**
    - After migrating to `global.mozcloud.image.repository` and `global.mozcloud.image.tag`, the tenant file in the `global-platform-admin` repository must be updated so ArgoCD Image Updater writes image tags to the correct Helm parameter paths.
    - The tenant file lives at `tenants/$APP_CODE.yaml` in the `global-platform-admin` repo. Find the `deployment.charts.$CHARTNAME.images.$IMAGENAME` entry and update `image_name` and `image_tag`:
      ```yaml
@@ -521,16 +521,16 @@ When continuing work on an existing migration:
    - If this is not updated, ArgoCD Image Updater will continue writing to the old parameter paths, which no longer affect the deployed image after migration.
    - Note: this change in `global-platform-admin` should be made as a separate PR alongside or immediately after the chart migration PR.
 
-8. **Document changes:**
-   - Show a summary of all changes made
-   - Store detailed changes in `.migration/CHANGES_$ENV.md`
-   - Include:
-     - Resource name changes (if any)
-     - New mozcloud configuration patterns used
-     - Any workarounds or special cases
-     - Template modifications
+11. **Document changes:**
+    - Show a summary of all changes made
+    - Store detailed changes in `.migration/CHANGES_$ENV.md`
+    - Include:
+      - Resource name changes (if any)
+      - New mozcloud configuration patterns used
+      - Any workarounds or special cases
+      - Template modifications
 
-8. **Final environment migration:**
+12. **Final environment migration:**
    - If we are migrating the last environment, ensure all duplicate values file entries live in the default `values.yaml`
    - Some entries may be moved temporarily to environment values files as we migrate non-production environments
    - Prompt for confirmation before making this change
