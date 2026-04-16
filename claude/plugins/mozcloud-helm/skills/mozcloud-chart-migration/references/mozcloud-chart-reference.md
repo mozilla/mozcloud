@@ -194,7 +194,7 @@ mozcloud:
 - Service annotation: `beta.cloud.google.com/backend-config` → `cloud.google.com/backend-config` (deprecated → current)
 - HPA: `autoscaling/v1` → `autoscaling/v2` (same name, API version upgrade)
 - FrontendConfig gains `redirectToHttps: true` (mozcloud default — enables HTTP→HTTPS redirect)
-- ManagedCertificate name is auto-derived from domain (`mcrt-<env>-<domain-with-dashes>`) — **unavoidable name change**, old cert needs manual deletion post-deploy
+- ManagedCertificate name is auto-derived from domain (`mcrt-<domain-with-dashes>`) by default — use `tls.certs` to preserve the original name (see "Preserving ManagedCertificate Name" below)
 
 ### Preserving ServiceAccount Name
 
@@ -213,6 +213,27 @@ mozcloud:
     myapp:
       serviceAccount: <original-sa-name>  # Reference the custom SA in each workload
 ```
+
+### Preserving ManagedCertificate Name
+
+By default mozcloud auto-generates ManagedCertificate names from the domain (`mcrt-<domain-with-dashes>`). This will differ from the original chart's cert name, causing a new certificate to be provisioned (which can take minutes to hours).
+
+Always specify the existing cert name in `tls.certs` to perform an in-place replacement:
+
+```yaml
+hosts:
+  myapp:
+    api: ingress
+    tls:
+      type: ManagedCertificate
+      create: true
+      certs:
+        - my-original-cert-name    # Preserves the existing cert — no reprovisioning
+```
+
+Mozcloud creates a ManagedCertificate with that exact name, matching what's already on the cluster. No provisioning delay.
+
+**Post-migration note for generic cert names:** If the original cert has a generic name (e.g. `managed-certificate`), add a TODO to the migration report: after the migration is stable, provision a new cert with a meaningful name by adding it to the `tls.certs` array alongside the old name, then remove the generic entry and prune the old ManagedCertificate via ArgoCD once the new cert is active.
 
 ### BackendConfig Options (GKE Ingress)
 

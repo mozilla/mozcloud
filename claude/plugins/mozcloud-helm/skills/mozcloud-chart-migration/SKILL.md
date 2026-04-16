@@ -495,6 +495,7 @@ When continuing work on an existing migration:
          - ConfigMap name → match the `configMaps:` key
          - Service name → match the workload key (workload key = Service name in mozcloud)
          - Deployment name → match the workload key (changing this is acceptable when selector labels change anyway)
+         - ManagedCertificate name → find the original name in the captured manifests (`kind: ManagedCertificate`, `metadata.name`), then set `tls.certs: [<original-name>]` with `tls.create: true` on the host config. See "Preserving ManagedCertificate Name" in the chart reference.
 
 10. **Update the tenant file:**
    - After migrating to `global.mozcloud.image.repository` and `global.mozcloud.image.tag`, the tenant file in the `global-platform-admin` repository must be updated so ArgoCD Image Updater writes image tags to the correct Helm parameter paths.
