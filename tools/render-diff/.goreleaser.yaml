@@ -1,0 +1,50 @@
+version: 2
+project_name: render-diff
+dist: dist
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: render-diff
+    main: .
+    binary: render-diff
+    env:
+      - CGO_ENABLED=0
+      - GOWORK=off
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - arm64
+      - amd64
+    ignore:
+      - goos: darwin
+        goarch: amd64
+    ldflags:
+      - -s -w
+      - -X github.com/mozilla/mozcloud/tools/render-diff/cmd.Version={{.Version}}
+
+archives:
+  - id: render-diff
+    formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot:
+  version_template: "{{ .Tag }}-{{ .ShortCommit }}-SNAPSHOT"
+
+changelog:
+  use: github
+  sort: asc
+
+blobs:
+  - provider: gs
+    bucket: "{{ .Env.RELEASE_BUCKET }}"
+    directory: "render-diff/{{ .Env.UPLOAD_DIR }}"
+
+release:
+  disable: true

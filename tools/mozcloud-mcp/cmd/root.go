@@ -17,6 +17,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Version is populated at build time via -ldflags "-X .../cmd.Version=...".
+var Version string
+
 var (
 	transport         string
 	allowedWriteRoots []string
@@ -112,8 +115,13 @@ func init() {
 			"Defaults to each tool's own chart_path argument.")
 }
 
-// getVersion returns a version string embedded via build info.
+// getVersion returns a version string. It prefers the ldflags-injected Version
+// (used by goreleaser builds), then falls back to Go module build info (for
+// `go install …@vX.Y.Z`), and finally returns "dev".
 func getVersion() string {
+	if Version != "" {
+		return Version
+	}
 	if info, ok := debug.ReadBuildInfo(); ok {
 		if info.Main.Version != "" && info.Main.Version != "(devel)" {
 			return info.Main.Version

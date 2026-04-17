@@ -1,0 +1,99 @@
+name: release
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'mzcld/v*'
+      - 'mozcloud-mcp/v*'
+      - 'render-diff/v*'
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  # TODO: fill in once the GCS bucket is provisioned.
+  RELEASE_BUCKET: "<BUCKET_NAME>"
+  # TODO: fill in once Workload Identity Federation is configured in GCP.
+  WIF_PROVIDER: "projects/<GCP_PROJECT_NUMBER>/locations/global/workloadIdentityPools/<POOL_ID>/providers/<PROVIDER_ID>"
+  WIF_SERVICE_ACCOUNT: "<SA_EMAIL>"
+
+jobs:
+  # -----------------------------------------------------------------
+  # Tag push → immutable versioned release at <tool>/vX.Y.Z/
+  # -----------------------------------------------------------------
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Parse tool and version from tag
+        id: parse
+        run: |
+          full="${GITHUB_REF_NAME}"
+          tool="${full%%/*}"
+          version="${full#*/}"
+          echo "tool=${tool}"       >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/${{ steps.parse.outputs.tool }}/go.mod
+          cache: false
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          workdir: tools/${{ steps.parse.outputs.tool }}
+          args: release --clean
+        env:
+          GORELEASER_CURRENT_TAG: ${{ steps.parse.outputs.version }}
+          UPLOAD_DIR: ${{ steps.parse.outputs.version }}
+          RELEASE_BUCKET: ${{ env.RELEASE_BUCKET }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # -----------------------------------------------------------------
+  # Main push → rolling "latest" at <tool>/latest/ for all three tools
+  # -----------------------------------------------------------------
+  latest:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tool: [mzcld, mozcloud-mcp, render-diff]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/${{ matrix.tool }}/go.mod
+          cache: false
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          workdir: tools/${{ matrix.tool }}
+          args: release --snapshot --clean
+        env:
+          UPLOAD_DIR: latest
+          RELEASE_BUCKET: ${{ env.RELEASE_BUCKET }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
