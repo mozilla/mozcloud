@@ -1,6 +1,6 @@
 # PR 3 Atlantis sequence
 
-Print the block below to the user after pushing PR 3. Substitute `<function>` and `<risk_level>` with the collected values.
+Print the block below to the user after pushing PR 3. Substitute `<function>` and `<risk_level>` with the collected values. Then print the suggested PR body that follows the block. Omit the `<jira_ticket>` bullet if the user did not provide a ticket.
 
 ```
 PR 3 is ready to open. Steps:
@@ -38,4 +38,17 @@ MERGE ONLY after all applies succeed.
 
 After merging: set up bastion access if you haven't already.
 See https://mozilla-hub.atlassian.net/wiki/spaces/SRE/pages/27919459
+```
+
+Suggested PR body:
+
+```
+## Description
+
+Bootstrap PR 3/3 for tenant <app_code>. Adds the tenant definition to `tenants/<app_code>.yaml`.
+
+## Related Tickets & Documents
+
+* <jira_ticket>
+* https://mozilla-hub.atlassian.net/wiki/spaces/SRE/pages/2408480771/Bootstrapping+a+tenant
 ```

@@ -55,9 +55,12 @@ Ask all four questions at once:
 
 ### Batch 3 of 3
 
-Ask one question:
+Ask all four questions at once. The last three are optional:
 
-1. **clone_base_path** — Where should the repos be cloned? (e.g. `~/src/mozilla` or `/tmp/bootstrap`). The repos will be cloned as subdirectories of this path.
+1. **clone_base_path** — Where should the repos be cloned? (e.g. `~/src/mozilla` or `/tmp/bootstrap`). Used for any repo the user does not provide an explicit path for below. The repos will be cloned as subdirectories of this path.
+2. **infra_repo_path** (optional) — Path to an existing `<function>-infra` checkout to reuse (e.g. `~/work/webservices-infra`). Leave blank to clone under `clone_base_path`.
+3. **gpa_repo_path** (optional) — Path to an existing `global-platform-admin` checkout to reuse. Leave blank to clone under `clone_base_path`.
+4. **jira_ticket** (optional) — Tracking ticket for this bootstrap (e.g. `MZCLD-1234`). If provided, it will be included in the suggested PR bodies so the target repos' autolink configuration renders it as a hyperlink. Leave blank if there is no tracking ticket.
 
 ---
 
@@ -79,12 +82,16 @@ If workgroup does not exist:
 
 ### Derive values
 
-Compute and display these for the user to confirm before proceeding:
+Compute the working paths:
+- `infra_path` = `infra_repo_path` if provided, else `<clone_base_path>/<function>-infra`
+- `gpa_path` = `gpa_repo_path` if provided, else `<clone_base_path>/global-platform-admin`
+
+Display these for the user to confirm before proceeding:
 
 ```
 infra_repo:          mozilla/<function>-infra
-clone_path:          <clone_base_path>/<function>-infra
-global_pa_path:      <clone_base_path>/global-platform-admin
+infra_path:          <infra_path>
+gpa_path:            <gpa_path>
 nonprod_project:     moz-fx-<app_code>-nonprod
 prod_project:        moz-fx-<app_code>-prod
 image_repository:    us-docker.pkg.dev/moz-fx-<app_code>-prod/<app_code>-prod/<image_name>
@@ -96,16 +103,17 @@ Ask the user to confirm these look correct before continuing.
 
 ---
 
-## Phase 3: Clone repos
+## Phase 3: Clone or reuse repos
 
-Clone both repos into the base path:
+For each of the two repos (`<function>-infra` at `<infra_path>`, `global-platform-admin` at `<gpa_path>`):
+
+- If the user provided an explicit path (`infra_repo_path` / `gpa_repo_path`) or a checkout already exists at the derived path, reuse it — do a `git checkout main && git pull` in that directory to make sure it's current.
+- Otherwise, clone it:
 
 ```bash
-git clone git@github.com:mozilla/<function>-infra.git <clone_base_path>/<function>-infra
-git clone git@github.com:mozilla/global-platform-admin.git <clone_base_path>/global-platform-admin
+git clone git@github.com:mozilla/<function>-infra.git <infra_path>
+git clone git@github.com:mozilla/global-platform-admin.git <gpa_path>
 ```
-
-If either repo already exists at that path, skip the clone and use the existing checkout (do a `git pull` to ensure it is current).
 
 ---
 
@@ -116,7 +124,7 @@ If either repo already exists at that path, skip the clone and use the existing 
 1. Create a branch:
 
 ```bash
-cd <clone_base_path>/<function>-infra
+cd <infra_path>
 git checkout -b bootstrap-<app_code>-pr1
 ```
 
@@ -137,7 +145,7 @@ Use the Read tool to read the current file first and find the right insertion po
 3. Commit and push:
 
 ```bash
-cd <clone_base_path>/<function>-infra
+cd <infra_path>
 git add projects/tf/global/locals.tf
 git commit -m "bootstrap: add <app_code> GCP project entry"
 git push -u origin bootstrap-<app_code>-pr1
@@ -156,6 +164,21 @@ PR 1 is ready to open. Steps:
 7. Do NOT start Step 2 until this PR is fully merged
 ```
 
+Then print the suggested PR body. Omit the `<jira_ticket>` bullet if the user did not provide a ticket.
+
+```
+Suggested PR body:
+
+## Description
+
+Bootstrap PR 1/3 for tenant <app_code>. Adds the GCP project entry to `projects/tf/global/locals.tf`.
+
+## Related Tickets & Documents
+
+* <jira_ticket>
+* https://mozilla-hub.atlassian.net/wiki/spaces/SRE/pages/2408480771/Bootstrapping+a+tenant
+```
+
 5. **Pause.** Use AskUserQuestion to ask: "Has PR 1 been merged and the apply succeeded? Reply yes to continue to Step 2."
 
 ---
@@ -167,7 +190,7 @@ PR 1 is ready to open. Steps:
 1. Create a branch:
 
 ```bash
-cd <clone_base_path>/<function>-infra
+cd <infra_path>
 git checkout main && git pull
 git checkout -b bootstrap-<app_code>-pr2
 ```
@@ -175,7 +198,7 @@ git checkout -b bootstrap-<app_code>-pr2
 2. Run the scaffold script:
 
 ```bash
-cd <clone_base_path>/<function>-infra
+cd <infra_path>
 ./misc/bin/new-project <app_code> --risk <risk_level>
 ```
 
@@ -195,7 +218,7 @@ Follow the existing formatting in the file.
 5. Commit and push:
 
 ```bash
-cd <clone_base_path>/<function>-infra
+cd <infra_path>
 git add <app_code>/ CODEOWNERS
 git commit -m "bootstrap: add <app_code> project and environment resources"
 git push -u origin bootstrap-<app_code>-pr2
@@ -217,6 +240,21 @@ Custom resources may fail until the shared VPC is provisioned in Step 3.
 You will not have a Kubernetes namespace until Step 3 is complete.
 ```
 
+Then print the suggested PR body. Omit the `<jira_ticket>` bullet if the user did not provide a ticket.
+
+```
+Suggested PR body:
+
+## Description
+
+Bootstrap PR 2/3 for tenant <app_code>. Adds project and environment resources via the `new-project` scaffold, plus a CODEOWNERS entry.
+
+## Related Tickets & Documents
+
+* <jira_ticket>
+* https://mozilla-hub.atlassian.net/wiki/spaces/SRE/pages/2408480771/Bootstrapping+a+tenant
+```
+
 7. **Pause.** Use AskUserQuestion to ask: "Has PR 2 been merged and the apply succeeded? Reply yes to continue to Step 3."
 
 ---
@@ -228,7 +266,7 @@ You will not have a Kubernetes namespace until Step 3 is complete.
 1. Create a branch:
 
 ```bash
-cd <clone_base_path>/global-platform-admin
+cd <gpa_path>
 git checkout main && git pull
 git checkout -b bootstrap-<app_code>-pr3
 ```
@@ -240,12 +278,12 @@ git checkout -b bootstrap-<app_code>-pr3
     - 9090
 ```
 
-3. Write the file `<clone_base_path>/global-platform-admin/tenants/<app_code>.yaml` using the template at [templates/tenant.yaml](templates/tenant.yaml). Substitute every `<placeholder>` with the collected/derived input values. The `application_ports` list goes where `<application_ports_as_yaml_list>` appears, indented to match.
+3. Write the file `<gpa_path>/tenants/<app_code>.yaml` using the template at [templates/tenant.yaml](templates/tenant.yaml). Substitute every `<placeholder>` with the collected/derived input values. The `application_ports` list goes where `<application_ports_as_yaml_list>` appears, indented to match.
 
 4. Commit and push:
 
 ```bash
-cd <clone_base_path>/global-platform-admin
+cd <gpa_path>
 git add tenants/<app_code>.yaml
 git commit -m "bootstrap: add <app_code> tenant definition"
 git push -u origin bootstrap-<app_code>-pr3
