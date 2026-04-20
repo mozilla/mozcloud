@@ -147,7 +147,7 @@ Use the Read tool to read the current file first and find the right insertion po
 ```bash
 cd <infra_path>
 git add projects/tf/global/locals.tf
-git commit -m "bootstrap: add <app_code> GCP project entry"
+git commit -m "feat(<app_code>): add GCP project entry"
 git push -u origin bootstrap-<app_code>-pr1
 ```
 
@@ -220,7 +220,7 @@ Follow the existing formatting in the file.
 ```bash
 cd <infra_path>
 git add <app_code>/ CODEOWNERS
-git commit -m "bootstrap: add <app_code> project and environment resources"
+git commit -m "feat(<app_code>): add project and environment resources"
 git push -u origin bootstrap-<app_code>-pr2
 ```
 
@@ -285,7 +285,7 @@ git checkout -b bootstrap-<app_code>-pr3
 ```bash
 cd <gpa_path>
 git add tenants/<app_code>.yaml
-git commit -m "bootstrap: add <app_code> tenant definition"
+git commit -m "feat(<app_code>): add tenant definition"
 git push -u origin bootstrap-<app_code>-pr3
 ```
 
