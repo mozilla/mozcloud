@@ -18,6 +18,9 @@ claude plugin install mozcloud-helm
 
 # Customer support analysis (no dependencies)
 claude plugin install mozcloud-support
+
+# Tenant lifecycle (no dependencies)
+claude plugin install mozcloud-tenant
 ```
 
 The `mozcloud-helm` plugin requires building the MCP server binary:
@@ -32,6 +35,7 @@ go install github.com/mozilla/mozcloud/tools/mozcloud-mcp@latest
 |--------|----------|--------------|
 | `mozcloud-helm` | `mozcloud-chart-migration` skill, `mozcloud-helm-migrator` agent, `mozcloud` MCP server | Go 1.21+ |
 | `mozcloud-support` | `support-analysis` skill, `srein-triage` skill | None |
+| `mozcloud-tenant` | `tenant-bootstrap` skill | None |
 
 ## Details
 
@@ -39,5 +43,6 @@ go install github.com/mozilla/mozcloud/tools/mozcloud-mcp@latest
 |------|------|-------------|
 | Skill | `mozcloud-chart-migration` | Step-by-step Helm chart migration to mozcloud |
 | Skill | `srein-triage` | Aid for daily intake and triage of MozCloud customer support requests in the Jira SREIN project |
+| Skill | `tenant-bootstrap` | Step-by-step MozCloud tenant bootstrap across three sequential PRs |
 | Agent | `mozcloud-helm-migrator` | Autonomous agent for end-to-end chart migrations |
 | MCP server | `mozcloud-mcp` | Tools for helm ops, OCI registry checks, schema validation, and render diffs |

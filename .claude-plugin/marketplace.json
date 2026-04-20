@@ -18,6 +18,12 @@
       "description": "MozCloud customer support skills — support analysis that cross-references Slack (#mozcloud-support) and Jira (SREIN) to categorize themes and produce actionable reports and SREIN triage skill",
       "source": "./claude/plugins/mozcloud-support",
       "category": "productivity"
+    },
+    {
+      "name": "mozcloud-tenant",
+      "description": "MozCloud tenant lifecycle skills — tenant bootstrap across function-infra and global-platform-admin repos, with input validation, scaffolding, and Atlantis guidance",
+      "source": "./claude/plugins/mozcloud-tenant",
+      "category": "development"
     }
   ]
 }
