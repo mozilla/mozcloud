@@ -1,7 +1,0 @@
-{
-  "name": "mozcloud-tenant",
-  "description": "MozCloud tenant lifecycle skills — tenant bootstrap, configuration changes, and related onboarding workflows",
-  "author": {
-    "name": "Mozilla CloudEng"
-  }
-}

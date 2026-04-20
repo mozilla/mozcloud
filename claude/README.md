@@ -13,17 +13,14 @@ claude plugin marketplace add mozilla/mozcloud
 
 ## Install the individual plugins
 ```bash
-# Helm chart migration toolkit (skill + agent + MCP server, requires Go 1.21+)
-claude plugin install mozcloud-helm
+# Platform-engineering toolkit
+claude plugin install mozcloud-tools
 
 # Customer support analysis (no dependencies)
 claude plugin install mozcloud-support
-
-# Tenant lifecycle (no dependencies)
-claude plugin install mozcloud-tenant
 ```
 
-The `mozcloud-helm` plugin requires building the MCP server binary:
+The `mozcloud-tools` plugin's Helm skill and agent use an MCP server that must be built separately (requires Go 1.21+):
 
 ```bash
 go install github.com/mozilla/mozcloud/tools/mozcloud-mcp@latest
@@ -33,9 +30,8 @@ go install github.com/mozilla/mozcloud/tools/mozcloud-mcp@latest
 
 | Plugin | Contents | Requirements |
 |--------|----------|--------------|
-| `mozcloud-helm` | `mozcloud-chart-migration` skill, `mozcloud-helm-migrator` agent, `mozcloud` MCP server | Go 1.21+ |
+| `mozcloud-tools` | Skills, agent, and MCP server for MozCloud platform work | Go 1.21+ (only for Helm skill/agent) |
 | `mozcloud-support` | `support-analysis` skill, `srein-triage` skill | None |
-| `mozcloud-tenant` | `tenant-bootstrap` skill | None |
 
 ## Details
 

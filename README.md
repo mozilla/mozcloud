@@ -80,7 +80,7 @@ Skills, agents, and an MCP server for using [Claude Code](https://claude.ai/code
 
 ```bash
 claude plugin marketplace add mozilla/mozcloud
-claude plugin install mozcloud-helm
+claude plugin install mozcloud-tools
 claude plugin install mozcloud-support
 ```
 
@@ -88,7 +88,7 @@ claude plugin install mozcloud-support
 
 | Plugin | Description |
 |--------|-------------|
-| [`mozcloud-helm`](./claude/plugins/mozcloud-helm/) | Helm chart migration skill, autonomous migration agent, and MCP server |
+| [`mozcloud-tools`](./claude/plugins/mozcloud-tools/) | Skills, agent, and MCP server for MozCloud platform work |
 | [`mozcloud-support`](./claude/plugins/mozcloud-support/) | Support analysis and SREIN triage skills |
 
 ### mozcloud-chart-migration skill

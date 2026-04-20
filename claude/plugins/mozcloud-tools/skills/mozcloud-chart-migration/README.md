@@ -46,7 +46,7 @@ Install via the MozCloud plugin marketplace:
 
 ```bash
 claude plugin marketplace add mozilla/mozcloud
-claude plugin install mozcloud-helm
+claude plugin install mozcloud-tools
 ```
 
 Restart Claude Code or run `/reload-plugins` to pick up the new skill.

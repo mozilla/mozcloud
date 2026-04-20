@@ -1,0 +1,7 @@
+{
+  "name": "mozcloud-tools",
+  "description": "MozCloud platform-engineering toolkit — skills, an autonomous agent, and the mozcloud MCP server",
+  "author": {
+    "name": "Mozilla CloudEng"
+  }
+}
