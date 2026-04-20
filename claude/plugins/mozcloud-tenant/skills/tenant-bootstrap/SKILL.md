@@ -179,7 +179,7 @@ Bootstrap PR 1/3 for tenant <app_code>. Adds the GCP project entry to `projects/
 * https://mozilla-hub.atlassian.net/wiki/spaces/SRE/pages/2408480771/Bootstrapping+a+tenant
 ```
 
-5. **Pause.** Use AskUserQuestion to ask: "Has PR 1 been merged and the apply succeeded? Reply yes to continue to Step 2."
+5. **Pause.** Use AskUserQuestion to ask two things: "Has PR 1 been merged and the apply succeeded? Reply yes to continue to Step 2." and "Paste the URL of PR 1 so it can be referenced from the suggested PR 2 and PR 3 bodies (leave blank to skip)." Store the URL as `pr1_url`.
 
 ---
 
@@ -240,7 +240,7 @@ Custom resources may fail until the shared VPC is provisioned in Step 3.
 You will not have a Kubernetes namespace until Step 3 is complete.
 ```
 
-Then print the suggested PR body. Omit the `<jira_ticket>` bullet if the user did not provide a ticket.
+Then print the suggested PR body. Omit any bullet whose value was not provided (`<jira_ticket>`, `<pr1_url>`).
 
 ```
 Suggested PR body:
@@ -252,10 +252,11 @@ Bootstrap PR 2/3 for tenant <app_code>. Adds project and environment resources v
 ## Related Tickets & Documents
 
 * <jira_ticket>
+* PR 1: <pr1_url>
 * https://mozilla-hub.atlassian.net/wiki/spaces/SRE/pages/2408480771/Bootstrapping+a+tenant
 ```
 
-7. **Pause.** Use AskUserQuestion to ask: "Has PR 2 been merged and the apply succeeded? Reply yes to continue to Step 3."
+7. **Pause.** Use AskUserQuestion to ask two things: "Has PR 2 been merged and the apply succeeded? Reply yes to continue to Step 3." and "Paste the URL of PR 2 so it can be referenced from the suggested PR 3 body (leave blank to skip)." Store the URL as `pr2_url`.
 
 ---
 

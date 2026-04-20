@@ -40,7 +40,7 @@ After merging: set up bastion access if you haven't already.
 See https://mozilla-hub.atlassian.net/wiki/spaces/SRE/pages/27919459
 ```
 
-Suggested PR body:
+Suggested PR body. Omit any bullet whose value was not provided (`<jira_ticket>`, `<pr1_url>`, `<pr2_url>`).
 
 ```
 ## Description
@@ -50,5 +50,7 @@ Bootstrap PR 3/3 for tenant <app_code>. Adds the tenant definition to `tenants/<
 ## Related Tickets & Documents
 
 * <jira_ticket>
+* PR 1: <pr1_url>
+* PR 2: <pr2_url>
 * https://mozilla-hub.atlassian.net/wiki/spaces/SRE/pages/2408480771/Bootstrapping+a+tenant
 ```
