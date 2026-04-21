@@ -1,16 +1,16 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "mozcloud",
-  "description": "Claude Code plugins for Mozilla's MozCloud platform — Helm chart migrations, support analysis, and infrastructure tooling",
+  "description": "Claude Code plugins for Mozilla's MozCloud platform — platform-engineering toolkit and customer-support skills",
   "owner": {
     "name": "Mozilla SRE",
     "email": "sre@mozilla.com"
   },
   "plugins": [
     {
-      "name": "mozcloud-helm",
-      "description": "Helm chart migration toolkit for MozCloud — includes migration skill, autonomous migrator agent, and MCP server for helm ops, OCI registry checks, schema validation, and render diffs",
-      "source": "./claude/plugins/mozcloud-helm",
+      "name": "mozcloud-tools",
+      "description": "MozCloud platform-engineering toolkit — skills, an autonomous agent, and the mozcloud MCP server",
+      "source": "./claude/plugins/mozcloud-tools",
       "category": "development"
     },
     {

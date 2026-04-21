@@ -1,0 +1,29 @@
+globals:
+  version: v1alpha1
+  app_code: <app_code>
+  function: <function>
+  risk_level: <risk_level>
+  application_ports:
+<application_ports_as_yaml_list>
+  extra_attributes: {}
+  deployment:
+    type: argocd
+    charts:
+      <app_code>:
+        application_repository: <application_repository>
+        image_repository: us-docker.pkg.dev/moz-fx-<app_code>-prod/<app_code>-prod/<image_name>
+        write_back: true
+  workgroups:
+    - <workgroup>
+realms:
+  nonprod:
+    project_id: moz-fx-<app_code>-nonprod
+    environments:
+      - name: dev
+      - name: stage
+    extra_attributes: {}
+  prod:
+    project_id: moz-fx-<app_code>-prod
+    environments:
+      - name: prod
+    extra_attributes: {}
