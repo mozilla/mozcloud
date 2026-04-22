@@ -16,6 +16,7 @@ allowed-tools:
   - Bash(git commit:*)
   - Bash(git push:*)
   - Bash(./misc/bin/new-project:*)
+  - Bash(tflint:*)
   - Bash(mkdir:*)
   - Bash(ls:*)
   - Read
@@ -25,7 +26,7 @@ allowed-tools:
 
 # Bootstrap a new MozCloud tenant
 
-You are guiding the user through the full MozCloud tenant bootstrap process, covering pre-flight input collection, repo checkout, and three sequential PRs. Follow this workflow exactly.
+You are guiding the user through the full MozCloud tenant bootstrap process: pre-flight input collection, repo checkout, three sequential PRs (`<function>-infra` project entry, `<function>-infra` scaffold, `global-platform-admin` tenant definition), and a final no-op PR against `<function>-infra` to re-run `atlantis apply` and converge infra state. Follow this workflow exactly.
 
 Reference doc: https://mozilla-hub.atlassian.net/wiki/spaces/SRE/pages/2408480771/Bootstrapping+a+tenant
 
@@ -37,30 +38,29 @@ Ask in three batches.
 
 ### Batch 1 of 3
 
-Ask all four questions at once:
+Ask all five questions at once:
 
 1. **app_code** — The tenant identifier. Must be 15 characters or fewer (GCP project ID limit). Ask the user to enter it.
 2. **function** — Which infra repo this tenant belongs in. Options: `webservices` (default, for most services), `dataservices` (GCP data products: BigQuery, Dataflow, etc.), `sandbox` (testing/experimental).
 3. **risk_level** — Options: `high` (default, use unless you have a specific reason not to) or `low`.
 4. **workgroup** — The workgroup that owns this tenant. In most cases this matches the app_code. Ask: "Does your workgroup name match the app_code? If not, provide the workgroup name."
+5. **workgroup_status** — Does the workgroup already exist? Options: "Yes, it exists" or "No, I need to create one".
 
 ### Batch 2 of 3
 
-Ask all four questions at once:
+Ask all three questions at once:
 
 1. **application_repository** — The GitHub repo containing the application source code. Format: `mozilla/<repo-name>` (e.g. `mozilla/my-service`).
 2. **image_name** — The container image name as it will appear in GAR (e.g. `my-service`).
 3. **application_ports** — Comma-separated list of ports the application listens on. Default is `8080`. Controls Kubernetes NetworkPolicy ingress rules.
-4. **workgroup_status** — Does the workgroup already exist? Options: "Yes, it exists" or "No, I need to create one".
 
 ### Batch 3 of 3
 
-Ask all four questions at once. The last three are optional:
+Ask all three questions at once. The last is optional:
 
-1. **clone_base_path** — Where should the repos be cloned? (e.g. `~/src/mozilla` or `/tmp/bootstrap`). Used for any repo the user does not provide an explicit path for below. The repos will be cloned as subdirectories of this path.
-2. **infra_repo_path** (optional) — Path to an existing `<function>-infra` checkout to reuse (e.g. `~/work/webservices-infra`). Leave blank to clone under `clone_base_path`.
-3. **gpa_repo_path** (optional) — Path to an existing `global-platform-admin` checkout to reuse. Leave blank to clone under `clone_base_path`.
-4. **jira_ticket** (optional) — Tracking ticket for this bootstrap (e.g. `MZCLD-1234`). If provided, it will be included in the suggested PR bodies so the target repos' autolink configuration renders it as a hyperlink. Leave blank if there is no tracking ticket.
+1. **infra_path** — Path to the `<function>-infra` checkout (e.g. `~/src/mozilla/webservices-infra`). If a checkout already exists at this path we'll reuse it; otherwise we'll clone it there.
+2. **gpa_path** — Path to the `global-platform-admin` checkout (e.g. `~/src/mozilla/global-platform-admin`). Same behavior: reuse if it exists, otherwise clone there.
+3. **jira_ticket** (optional) — Tracking ticket for this bootstrap (e.g. `MZCLD-1234`). If provided, it will be included in the suggested PR bodies so the target repos' autolink configuration renders it as a hyperlink. Leave blank if there is no tracking ticket.
 
 ---
 
@@ -82,11 +82,7 @@ If workgroup does not exist:
 
 ### Derive values
 
-Compute the working paths:
-- `infra_path` = `infra_repo_path` if provided, else `<clone_base_path>/<function>-infra`
-- `gpa_path` = `gpa_repo_path` if provided, else `<clone_base_path>/global-platform-admin`
-
-Display these for the user to confirm before proceeding:
+Display the following for the user to confirm before proceeding:
 
 ```
 infra_repo:          mozilla/<function>-infra
@@ -105,13 +101,23 @@ Ask the user to confirm these look correct before continuing.
 
 ## Phase 3: Clone or reuse repos
 
-For each of the two repos (`<function>-infra` at `<infra_path>`, `global-platform-admin` at `<gpa_path>`):
+Handle each repo independently.
 
-- If the user provided an explicit path (`infra_repo_path` / `gpa_repo_path`) or a checkout already exists at the derived path, reuse it — do a `git checkout main && git pull` in that directory to make sure it's current.
+**For `<function>-infra` at `<infra_path>`:**
+
+- If a checkout already exists at `<infra_path>`, reuse it: run `git checkout main && git pull` in that directory to make sure it's current.
 - Otherwise, clone it:
 
 ```bash
 git clone git@github.com:mozilla/<function>-infra.git <infra_path>
+```
+
+**For `global-platform-admin` at `<gpa_path>`:**
+
+- If a checkout already exists at `<gpa_path>`, reuse it: run `git checkout main && git pull` in that directory to make sure it's current.
+- Otherwise, clone it:
+
+```bash
 git clone git@github.com:mozilla/global-platform-admin.git <gpa_path>
 ```
 
@@ -125,6 +131,7 @@ git clone git@github.com:mozilla/global-platform-admin.git <gpa_path>
 
 ```bash
 cd <infra_path>
+git checkout main && git pull
 git checkout -b bootstrap-<app_code>-pr1
 ```
 
@@ -142,16 +149,32 @@ If `app_code` is longer than 15 characters, use:
 
 Use the Read tool to read the current file first and find the right insertion point. Follow the existing formatting exactly.
 
-3. Commit and push:
+3. Commit:
 
 ```bash
 cd <infra_path>
 git add projects/tf/global/locals.tf
 git commit -m "feat(<app_code>): add GCP project entry"
+```
+
+Then run `git show HEAD --stat` so the user can review what was committed, and print:
+
+```
+Ready to push. The following command will run only after you confirm:
+
+  git push -u origin bootstrap-<app_code>-pr1
+
+Reply "yes" to push, or tell me what to change.
+```
+
+4. Push after the user replies "yes":
+
+```bash
+cd <infra_path>
 git push -u origin bootstrap-<app_code>-pr1
 ```
 
-4. Print instructions for the user:
+5. Print instructions for the user:
 
 ```
 PR 1 is ready to open. Steps:
@@ -179,7 +202,14 @@ Bootstrap PR 1/3 for tenant <app_code>. Adds the GCP project entry to `projects/
 * https://mozilla-hub.atlassian.net/wiki/spaces/SRE/pages/2408480771/Bootstrapping+a+tenant
 ```
 
-5. **Pause.** Use AskUserQuestion to ask two things: "Has PR 1 been merged and the apply succeeded? Reply yes to continue to Step 2." and "Paste the URL of PR 1 so it can be referenced from the suggested PR 2 and PR 3 bodies (leave blank to skip)." Store the URL as `pr1_url`.
+6. **Pause.** Print the message below and **end your turn** — do not call any tool. Getting to a merged apply can take a long time, so this is a genuine hand-off, not a quick approval. When the user replies, parse the response for a confirmation and an optional PR URL; store the URL as `pr1_url` if provided, and proceed to Phase 5.
+
+```
+PR 1 is ready for review and merge. Once it has been merged and the atlantis
+apply has succeeded, reply here with "yes" to continue to Step 2.
+If you have a PR URL handy, paste it in the same reply and I'll
+reference it from the PR 2 and PR 3 bodies (otherwise just reply "yes").
+```
 
 ---
 
@@ -202,29 +232,59 @@ cd <infra_path>
 ./misc/bin/new-project <app_code> --risk <risk_level>
 ```
 
-3. If `workgroup` differs from `app_code`:
+3. Run tflint against the generated tree to clean up unused declarations and surface any other issues:
+
+```bash
+cd <infra_path>/<app_code>
+tflint --recursive --fix
+```
+
+Then read the output and handle it as follows:
+
+- **`terraform_unused_declarations` warnings** are auto-fixed by `--fix`. These are expected for bootstraps that don't set up Cloudarmor (the scaffold emits `shared_infra_project_id_{prod,nonprod}` locals that only Cloudarmor tenants consume). Note in your summary that they were fixed.
+- **Any other warning or error** → do **not** auto-fix. Print the full tflint output to the user, briefly describe each finding, ask how to proceed, and wait for direction before continuing.
+
+If `tflint` is not installed (command not found), do **not** halt. Tell the user: "tflint is not installed locally, so I'm skipping the pre-commit lint; CI will run the same checks on the PR. For a fresh bootstrap, expect `terraform_unused_declarations` warnings on `shared_infra_project_id_prod` and `shared_infra_project_id_nonprod` — these are emitted by the scaffold for tenants that don't use Cloudarmor and can be ignored. Any other tflint finding should be fixed before merging." Then continue to the next step.
+
+4. If `workgroup` differs from `app_code`:
    - Read `<app_code>/tf/global/permissions.tf`
    - Replace all three `workgroup:<app_code>/` references with `workgroup:<workgroup>/`
    - The three references are the values for `admin_ids`, `developer_ids`, and `viewer_ids` in the permissions module
 
-4. Add CODEOWNERS entry. Read the CODEOWNERS file, find the end of the file (or the section for app directories), and append:
+5. Add CODEOWNERS entry. Read the CODEOWNERS file, find the block of `<app_code>/` entries, and insert the new line in its correct alphabetical position relative to its neighbors. Do **not** reorder any existing lines. The new line format is:
 
 ```
-/<app_code>/  @mozilla/<workgroup>-workgroup
+<app_code>/ @mozilla/<workgroup>-wg @mozilla/sre-wg
 ```
 
-Follow the existing formatting in the file.
+Note: no leading slash, `-wg` suffix (not `-workgroup`), and `@mozilla/sre-wg` as the co-owner. Follow the existing formatting in the file for spacing between the path and the owners.
 
-5. Commit and push:
+6. Commit:
 
 ```bash
 cd <infra_path>
 git add <app_code>/ CODEOWNERS
 git commit -m "feat(<app_code>): add project and environment resources"
+```
+
+Then run `git show HEAD --stat` so the user can review what was committed, and print:
+
+```
+Ready to push. The following command will run only after you confirm:
+
+  git push -u origin bootstrap-<app_code>-pr2
+
+Reply "yes" to push, or tell me what to change.
+```
+
+7. Push after the user replies "yes":
+
+```bash
+cd <infra_path>
 git push -u origin bootstrap-<app_code>-pr2
 ```
 
-6. Print instructions:
+8. Print instructions:
 
 ```
 PR 2 is ready to open. Steps:
@@ -256,7 +316,14 @@ Bootstrap PR 2/3 for tenant <app_code>. Adds project and environment resources v
 * https://mozilla-hub.atlassian.net/wiki/spaces/SRE/pages/2408480771/Bootstrapping+a+tenant
 ```
 
-7. **Pause.** Use AskUserQuestion to ask two things: "Has PR 2 been merged and the apply succeeded? Reply yes to continue to Step 3." and "Paste the URL of PR 2 so it can be referenced from the suggested PR 3 body (leave blank to skip)." Store the URL as `pr2_url`.
+9. **Pause.** Print the message below and **end your turn** — do not call any tool. Getting to a merged apply can take a long time, so this is a genuine hand-off, not a quick approval. When the user replies, parse the response for a confirmation and an optional PR URL; store the URL as `pr2_url` if provided, and proceed to Phase 6.
+
+```
+PR 2 is ready for review and merge. Once it has been merged and the atlantis
+apply has succeeded, reply here with "yes" to continue to Step 3.
+If you have a PR URL handy, paste it in the same reply and I'll
+reference it from the PR 3 body (otherwise just reply "yes").
+```
 
 ---
 
@@ -281,19 +348,93 @@ git checkout -b bootstrap-<app_code>-pr3
 
 3. Write the file `<gpa_path>/tenants/<app_code>.yaml` using the template at [templates/tenant.yaml](templates/tenant.yaml). Substitute every `<placeholder>` with the collected/derived input values. The `application_ports` list goes where `<application_ports_as_yaml_list>` appears, indented to match.
 
-4. Commit and push:
+After writing the file, tell the user:
+
+- The template's Image Updater defaults assume `latest`-tagged builds for dev and semver-tagged builds for stage/prod (e.g. `1.2.3`). If the tenant uses a `v` prefix, adjust the regex to `^v?\d+\.\d+\.\d+$`; for other tagging schemes, see existing tenants in `global-platform-admin/tenants/` for examples and `tenants/schema.json` for the field reference.
+- Argo auto-sync is **not** set in the tenant YAML — it's configured on the generated ArgoCD Applications. After PR 3 merges, we suggest enabling auto-sync for the `stage` Application and leaving it disabled for `prod` (this will also appear in the post-bootstrap report).
+
+4. Commit:
 
 ```bash
 cd <gpa_path>
 git add tenants/<app_code>.yaml
 git commit -m "feat(<app_code>): add tenant definition"
+```
+
+Then run `git show HEAD --stat` so the user can review what was committed, and print:
+
+```
+Ready to push. The following command will run only after you confirm:
+
+  git push -u origin bootstrap-<app_code>-pr3
+
+Reply "yes" to push, or tell me what to change.
+```
+
+5. Push after the user replies "yes":
+
+```bash
+cd <gpa_path>
 git push -u origin bootstrap-<app_code>-pr3
 ```
 
-5. Print the PR instructions from [references/pr3-atlantis-sequence.md](references/pr3-atlantis-sequence.md). Substitute `<function>` and `<risk_level>` with the collected values before printing.
+6. Print the PR instructions from [references/pr3-atlantis-sequence.md](references/pr3-atlantis-sequence.md). Substitute `<function>` and `<risk_level>` with the collected values before printing.
+
+7. **Pause.** Print the message below and **end your turn** — do not call any tool. When the user replies, parse the response for a confirmation and an optional PR URL; store the URL as `pr3_url` if provided, and proceed to Phase 7.
+
+```
+PR 3 is ready for review and merge. Once it has been merged, reply here
+with "yes" to continue to the final infra apply — bootstrap isn't
+complete until that's done. If you have a PR URL handy, paste it in
+the same reply and I'll reference it from the post-bootstrap report
+(otherwise just reply "yes").
+```
 
 ---
 
-## Phase 7: Verification
+## Phase 7: Final infra apply
 
-Once PR 3 is merged, print the verification checklist from [references/post-merge-verification.md](references/post-merge-verification.md). Substitute `<app_code>` with the collected value and pick the correct ArgoCD URL for the `<function>` the user chose (the reference file lists all three).
+**Goal:** Run one more `atlantis apply` against `<function>-infra` to pick up the DNS records and logging-IAM bindings that depend on the tenant namespace created by PR 3. PR 2's apply ran before PR 3 existed, so those resources fell through to their `try()` fallbacks on the first pass.
+
+1. **Pause.** Print the message below and **end your turn** — do not call any tool. When the user replies "yes", proceed to Phase 8.
+
+```
+One more apply to go. PR 2's Atlantis run happened before PR 3 existed,
+so a few resources that depend on your tenant's namespace — the DNS
+records and the logging-IAM bindings (logging_dataset_writer,
+logging_bucket_writer) — fell through to their try() fallbacks and
+weren't actually created. A second apply on <function>-infra picks
+them up:
+
+1. Open a no-op PR against mozilla/<function>-infra — a trivial change
+   under <app_code>/tf/ (a comment edit in a *.tf file is fine) is
+   enough to get Atlantis to plan.
+2. Once Atlantis plans cleanly (the plan should include the DNS records
+   and IAM bindings), comment: atlantis apply
+3. Wait for the apply to succeed. You can close the PR without merging
+   if it only existed to trigger this apply.
+
+Reply "yes" once the apply has succeeded to render the post-bootstrap report.
+```
+
+---
+
+## Phase 8: Post-bootstrap report
+
+**Goal:** Render a report summarizing the bootstrap — PRs landed, verification steps the user should run, and what to do next. Print it in-chat; offer to save it to disk.
+
+1. Build the report by substituting every `<placeholder>` in the template at [templates/post-bootstrap-report.md](templates/post-bootstrap-report.md) with the collected values. Omit the `**Tracking:**` line if no `jira_ticket` was provided. Omit any PR URL bullet whose corresponding `prN_url` was not provided.
+
+2. Print the rendered report in a fenced markdown block so the user can copy it.
+
+3. Ask the user whether they want a copy written to disk. End your turn with this message:
+
+```
+Would you like me to save this report to a file? If yes, reply with a
+path (absolute or relative to the current directory). If no, just
+reply "no" — you can copy the report above from this chat.
+```
+
+4. On the user's next reply:
+   - If the reply looks like a filesystem path, use the Write tool to write the rendered report to that path, then print the absolute path so the user can locate it.
+   - Otherwise, print a brief "Done. You can copy the report above." acknowledgement and end.

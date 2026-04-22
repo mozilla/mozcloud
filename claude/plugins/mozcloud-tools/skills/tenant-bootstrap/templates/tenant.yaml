@@ -11,8 +11,9 @@ globals:
     charts:
       <app_code>:
         application_repository: <application_repository>
-        image_repository: us-docker.pkg.dev/moz-fx-<app_code>-prod/<app_code>-prod/<image_name>
-        write_back: true
+        images:
+          <image_name>:
+            auto_update: true
   workgroups:
     - <workgroup>
 realms:
@@ -20,10 +21,26 @@ realms:
     project_id: moz-fx-<app_code>-nonprod
     environments:
       - name: dev
+        charts:
+          <app_code>:
+            images:
+              <image_name>:
+                image_repository: us-docker.pkg.dev/moz-fx-<app_code>-prod/<app_code>-prod/<image_name>:latest
+                update_strategy: digest
       - name: stage
+        charts:
+          <app_code>:
+            images:
+              <image_name>:
+                image_regex: ^\d+\.\d+\.\d+$
     extra_attributes: {}
   prod:
     project_id: moz-fx-<app_code>-prod
     environments:
       - name: prod
+        charts:
+          <app_code>:
+            images:
+              <image_name>:
+                image_regex: ^\d+\.\d+\.\d+$
     extra_attributes: {}
