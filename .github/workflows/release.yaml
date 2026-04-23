@@ -13,11 +13,8 @@ permissions:
   id-token: write
 
 env:
-  # TODO: fill in once the GCS bucket is provisioned.
-  RELEASE_BUCKET: "<BUCKET_NAME>"
-  # TODO: fill in once Workload Identity Federation is configured in GCP.
-  WIF_PROVIDER: "projects/<GCP_PROJECT_NUMBER>/locations/global/workloadIdentityPools/<POOL_ID>/providers/<PROVIDER_ID>"
-  WIF_SERVICE_ACCOUNT: "<SA_EMAIL>"
+  RELEASE_BUCKET: "moz-fx-platform-shared-global-mozcloud-tools"
+  WIF_SERVICE_ACCOUNT: "serviceAccount:bucket-object-user@moz-fx-platform-artifacts.iam.gserviceaccount.com"
 
 jobs:
   # -----------------------------------------------------------------
@@ -47,7 +44,7 @@ jobs:
 
       - uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          workload_identity_provider: ${{ vars.GCPV2_GITHUB_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
 
       - uses: goreleaser/goreleaser-action@v6
@@ -84,7 +81,7 @@ jobs:
 
       - uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          workload_identity_provider: ${{ vars.GCPV2_GITHUB_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
 
       - uses: goreleaser/goreleaser-action@v6
