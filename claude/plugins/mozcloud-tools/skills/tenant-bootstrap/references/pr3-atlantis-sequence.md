@@ -25,10 +25,6 @@ atlantis apply -d <function>-<risk_level>/tf/prod
 atlantis plan -d functional-org-vpc/tf
 atlantis apply -d functional-org-vpc/tf
 
-# Update bastion host access rules
-atlantis plan -d bastions/tf
-atlantis apply -d bastions/tf
-
 # Sync Wiz security tool user assignments (expect many wiz_user changes, safe to apply)
 atlantis plan -d wiz/tf
 atlantis apply -d wiz/tf
