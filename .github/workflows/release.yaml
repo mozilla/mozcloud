@@ -4,23 +4,44 @@ on:
   push:
     branches: [main]
     tags:
-      - 'mzcld/v*'
-      - 'mozcloud-mcp/v*'
-      - 'render-diff/v*'
+      - 'tools/mzcld/v*'
+      - 'tools/mozcloud-mcp/v*'
+      - 'tools/render-diff/v*'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'What to run'
+        required: true
+        type: choice
+        default: latest
+        options: [latest, release]
+      tool:
+        description: 'Tool (release mode only)'
+        required: false
+        type: choice
+        default: mzcld
+        options: [mzcld, mozcloud-mcp, render-diff]
+      version:
+        description: 'Version tag e.g. v1.2.3 (release mode only)'
+        required: false
+        type: string
 
 permissions:
   contents: read
 
 env:
   RELEASE_BUCKET: "moz-fx-platform-shared-global-mozcloud-tools"
-  WIF_SERVICE_ACCOUNT: "serviceAccount:bucket-object-user@moz-fx-platform-artifacts.iam.gserviceaccount.com"
+  WIF_SERVICE_ACCOUNT: "bucket-object-user@moz-fx-platform-artifacts.iam.gserviceaccount.com"
 
 jobs:
   # -----------------------------------------------------------------
   # Tag push → immutable versioned release at <tool>/vX.Y.Z/
+  # Tag format: tools/<tool>/v<version>
   # -----------------------------------------------------------------
   release:
-    if: startsWith(github.ref, 'refs/tags/')
+    if: |
+      startsWith(github.ref, 'refs/tags/tools/') ||
+      (github.event_name == 'workflow_dispatch' && inputs.mode == 'release')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -28,15 +49,28 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
           persist-credentials: false
 
-      - name: Parse tool and version from tag
+      - name: Parse tool and version
         id: parse
+        env:
+          INPUT_TOOL: ${{ inputs.tool }}
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          full="${GITHUB_REF_NAME}"
-          tool="${full%%/*}"
-          version="${full#*/}"
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            tool="${INPUT_TOOL}"
+            version="${INPUT_VERSION}"
+            if [ -z "${tool}" ] || [ -z "${version}" ]; then
+              echo "release mode requires both 'tool' and 'version' inputs" >&2
+              exit 1
+            fi
+          else
+            full="${GITHUB_REF_NAME}"
+            rest="${full#tools/}"
+            tool="${rest%%/*}"
+            version="${rest#*/}"
+          fi
           echo "tool=${tool}"       >> "$GITHUB_OUTPUT"
           echo "version=${version}" >> "$GITHUB_OUTPUT"
 
@@ -63,10 +97,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # -----------------------------------------------------------------
-  # Main push → rolling "latest" at <tool>/latest/ for all three tools
+  # Main push → rolling "latest" at <tool>/latest/ for all three tools.
+  # Snapshot mode skips goreleaser's publish pipe (incl. blobs upload),
+  # so we build archives with goreleaser then upload to GCS explicitly.
+  # Version stamp uses the main commit SHA.
   # -----------------------------------------------------------------
   latest:
-    if: github.ref == 'refs/heads/main'
+    if: |
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' ||
+       (github.event_name == 'workflow_dispatch' && inputs.mode == 'latest'))
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -91,6 +131,8 @@ jobs:
           workload_identity_provider: ${{ vars.GCPV2_GITHUB_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
 
+      - uses: google-github-actions/setup-gcloud@v2
+
       - uses: goreleaser/goreleaser-action@1a80836c5c9d9e5755a25cb59ec6f45a3b5f41a8
         with:
           distribution: goreleaser
@@ -98,6 +140,24 @@ jobs:
           workdir: tools/${{ matrix.tool }}
           args: release --snapshot --clean
         env:
-          UPLOAD_DIR: latest
-          RELEASE_BUCKET: ${{ env.RELEASE_BUCKET }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_CURRENT_TAG: ${{ github.sha }}
+
+      - name: Upload latest archives to GCS
+        run: |
+          set -euo pipefail
+          tool="${{ matrix.tool }}"
+          dist="tools/${tool}/dist"
+          dest="gs://${RELEASE_BUCKET}/${tool}/latest/"
+          staging="$(mktemp -d)"
+          # Goreleaser archives are named "<tool>_<version>_<os>_<arch>.tar.gz".
+          # Drop the version segment so latest/ has stable filenames that
+          # overwrite cleanly on every run.
+          for f in "${dist}"/*.tar.gz; do
+            base="$(basename "$f")"
+            stable="$(echo "$base" | sed -E "s|^(${tool})_[^_]+_(.+)\\.tar\\.gz$|\\1_\\2.tar.gz|")"
+            cp "$f" "${staging}/${stable}"
+          done
+          gcloud storage cp "${staging}"/*.tar.gz "${dest}"
+          if [ -f "${dist}/checksums.txt" ]; then
+            gcloud storage cp "${dist}/checksums.txt" "${dest}"
+          fi
