@@ -11,10 +11,6 @@ Claude Code plugin bundling MozCloud platform-engineering tools.
 | Agent | `mozcloud-helm-migrator` | Autonomous agent for end-to-end chart migrations |
 | MCP server | `mozcloud` | Tools for helm ops, OCI registry checks, schema validation, and render diffs |
 
-## Requirements
-
-- Go 1.21+ (for building the `mozcloud` MCP server; only needed if you use the Helm skill or agent)
-
 ## Install
 
 ```bash
@@ -25,11 +21,20 @@ claude plugin marketplace add mozilla/mozcloud
 claude plugin install mozcloud-tools
 ```
 
-The MCP server binary must be built separately:
+The `mozcloud-mcp` binary must be on `PATH` for the MCP server to start. Install
+the latest published build with:
 
 ```bash
-go install github.com/mozilla/mozcloud/tools/mozcloud-mcp@latest
+curl -fsSL https://storage.googleapis.com/moz-fx-platform-shared-global-mozcloud-tools/install.sh | bash -s mozcloud-mcp
 ```
+
+Pin a specific version:
+
+```bash
+curl -fsSL https://storage.googleapis.com/moz-fx-platform-shared-global-mozcloud-tools/install.sh | bash -s -- mozcloud-mcp --version v1.2.3
+```
+
+By default the binary lands in `~/.local/bin`. Override with `INSTALL_DIR=/usr/local/bin` or `--install-dir <dir>`.
 
 ## Usage
 

@@ -3,27 +3,16 @@ name: release
 on:
   push:
     branches: [main]
-    tags:
-      - 'tools/mzcld/v*'
-      - 'tools/mozcloud-mcp/v*'
-      - 'tools/render-diff/v*'
   workflow_dispatch:
     inputs:
-      mode:
-        description: 'What to run'
+      tool:
+        description: 'Tool to manually re-release (escape hatch)'
         required: true
         type: choice
-        default: latest
-        options: [latest, release]
-      tool:
-        description: 'Tool (release mode only)'
-        required: false
-        type: choice
-        default: mzcld
         options: [mzcld, mozcloud-mcp, render-diff]
       version:
-        description: 'Version tag e.g. v1.2.3 (release mode only)'
-        required: false
+        description: 'Version tag e.g. v1.2.3'
+        required: true
         type: string
 
 permissions:
@@ -35,95 +24,82 @@ env:
 
 jobs:
   # -----------------------------------------------------------------
-  # Tag push → immutable versioned release at <tool>/vX.Y.Z/
-  # Tag format: tools/<tool>/v<version>
+  # Push to main → release-please opens/updates per-tool Release PRs.
+  # When a Release PR merges, the *next* main run sees the autorelease
+  # metadata, pushes the tag, creates the GitHub Release, and emits
+  # paths_released so downstream jobs fan out per tool.
   # -----------------------------------------------------------------
-  release:
-    if: |
-      startsWith(github.ref, 'refs/tags/tools/') ||
-      (github.event_name == 'workflow_dispatch' && inputs.mode == 'release')
+  release-please:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      id-token: write
+      contents: write
+      pull-requests: write
+    outputs:
+      releases_created: ${{ steps.rp.outputs.releases_created }}
+      matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4.4.1
+        id: rp
         with:
-          fetch-depth: 1
-          persist-credentials: false
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
 
-      - name: Parse tool and version
-        id: parse
+      - name: Build release matrix
+        id: matrix
+        if: steps.rp.outputs.releases_created == 'true'
         env:
-          INPUT_TOOL: ${{ inputs.tool }}
-          INPUT_VERSION: ${{ inputs.version }}
+          PATHS: ${{ steps.rp.outputs.paths_released }}
+          RP_OUTPUTS: ${{ toJson(steps.rp.outputs) }}
         run: |
-          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
-            tool="${INPUT_TOOL}"
-            version="${INPUT_VERSION}"
-            if [ -z "${tool}" ] || [ -z "${version}" ]; then
-              echo "release mode requires both 'tool' and 'version' inputs" >&2
-              exit 1
-            fi
-          else
-            full="${GITHUB_REF_NAME}"
-            rest="${full#tools/}"
-            tool="${rest%%/*}"
-            version="${rest#*/}"
-          fi
-          echo "tool=${tool}"       >> "$GITHUB_OUTPUT"
-          echo "version=${version}" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
-        with:
-          go-version-file: tools/${{ steps.parse.outputs.tool }}/go.mod
-          cache: false
-
-      - uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
-        with:
-          workload_identity_provider: ${{ vars.GCPV2_GITHUB_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
-
-      - uses: goreleaser/goreleaser-action@1a80836c5c9d9e5755a25cb59ec6f45a3b5f41a8
-        with:
-          distribution: goreleaser
-          version: "~> v2"
-          workdir: tools/${{ steps.parse.outputs.tool }}
-          args: release --clean
-        env:
-          GORELEASER_CURRENT_TAG: ${{ steps.parse.outputs.version }}
-          UPLOAD_DIR: ${{ steps.parse.outputs.version }}
-          RELEASE_BUCKET: ${{ env.RELEASE_BUCKET }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          set -euo pipefail
+          matrix="$(jq -cn --argjson paths "$PATHS" --argjson out "$RP_OUTPUTS" '
+            { include: [
+                $paths[] | {
+                  path: .,
+                  tool: (. | sub("^tools/"; "")),
+                  tag:  $out[(. + "--tag_name")]
+                }
+              ]
+            }
+          ')"
+          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
 
   # -----------------------------------------------------------------
-  # Main push → rolling "latest" at <tool>/latest/ for all three tools.
-  # Snapshot mode skips goreleaser's publish pipe (incl. blobs upload),
-  # so we build archives with goreleaser then upload to GCS explicitly.
-  # Version stamp uses the main commit SHA.
+  # Tagged release → goreleaser builds and uploads to GCS:
+  #   gs://$BUCKET/<tool>/<version>/   (immutable, per-version)
+  #   gs://$BUCKET/<tool>/latest/      (rolling pointer to most-recent release)
+  # GitHub Release object is owned by release-please (goreleaser's
+  # release pipe is disabled in each tool's .goreleaser.yaml).
   # -----------------------------------------------------------------
-  latest:
-    if: |
-      github.ref == 'refs/heads/main' &&
-      (github.event_name == 'push' ||
-       (github.event_name == 'workflow_dispatch' && inputs.mode == 'latest'))
+  release:
+    needs: release-please
+    if: needs.release-please.outputs.releases_created == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
     strategy:
       fail-fast: false
-      matrix:
-        tool: [mzcld, mozcloud-mcp, render-diff]
+      matrix: ${{ fromJson(needs.release-please.outputs.matrix) }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
-          fetch-depth: 0
+          ref: ${{ matrix.tag }}
+          fetch-depth: 1
           persist-credentials: false
+
+      - name: Derive version segment from tag
+        id: ver
+        env:
+          TAG: ${{ matrix.tag }}
+        run: |
+          # Tag is like "tools/mzcld/v0.2.0" — strip everything but the trailing version.
+          echo "version=${TAG##*/}" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version-file: tools/${{ matrix.tool }}/go.mod
+          go-version-file: ${{ matrix.path }}/go.mod
           cache: false
 
       - uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
@@ -137,27 +113,117 @@ jobs:
         with:
           distribution: goreleaser
           version: "~> v2"
-          workdir: tools/${{ matrix.tool }}
-          args: release --snapshot --clean
+          workdir: ${{ matrix.path }}
+          args: release --clean
         env:
-          GORELEASER_CURRENT_TAG: ${{ github.sha }}
+          GORELEASER_CURRENT_TAG: ${{ steps.ver.outputs.version }}
+          UPLOAD_DIR: ${{ steps.ver.outputs.version }}
+          RELEASE_BUCKET: ${{ env.RELEASE_BUCKET }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload latest archives to GCS
+      - name: Mirror artifacts to <tool>/latest/
+        env:
+          TOOL: ${{ matrix.tool }}
+          DIST: ${{ matrix.path }}/dist
         run: |
           set -euo pipefail
-          tool="${{ matrix.tool }}"
-          dist="tools/${tool}/dist"
-          dest="gs://${RELEASE_BUCKET}/${tool}/latest/"
+          latest_dest="gs://${RELEASE_BUCKET}/${TOOL}/latest/"
           staging="$(mktemp -d)"
-          # Goreleaser archives are named "<tool>_<version>_<os>_<arch>.tar.gz".
-          # Drop the version segment so latest/ has stable filenames that
-          # overwrite cleanly on every run.
-          for f in "${dist}"/*.tar.gz; do
+          # Strip the version segment from filenames so the latest/ pointer
+          # is stable across releases (install scripts can pin to a known name).
+          for f in "${DIST}"/*.tar.gz; do
             base="$(basename "$f")"
-            stable="$(echo "$base" | sed -E "s|^(${tool})_[^_]+_(.+)\\.tar\\.gz$|\\1_\\2.tar.gz|")"
-            cp "$f" "${staging}/${stable}"
+            stable="$(echo "$base" | sed -E "s|^(${TOOL})_[^_]+_(.+)\\.tar\\.gz$|\\1_\\2.tar.gz|")"
+            cp -- "$f" "${staging}/${stable}"
           done
-          gcloud storage cp "${staging}"/*.tar.gz "${dest}"
-          if [ -f "${dist}/checksums.txt" ]; then
-            gcloud storage cp "${dist}/checksums.txt" "${dest}"
-          fi
+          ( cd "${staging}" && sha256sum -- *.tar.gz > checksums.txt )
+          gcloud storage cp "${staging}"/* "${latest_dest}"
+
+  # -----------------------------------------------------------------
+  # Manual escape hatch: re-release a specific tool at a specific tag
+  # without going through release-please. Useful if release-please is
+  # broken or for backfilling a missed release.
+  # -----------------------------------------------------------------
+  release-manual:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: tools/${{ inputs.tool }}/${{ inputs.version }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: tools/${{ inputs.tool }}/go.mod
+          cache: false
+
+      - uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
+        with:
+          workload_identity_provider: ${{ vars.GCPV2_GITHUB_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
+
+      - uses: goreleaser/goreleaser-action@1a80836c5c9d9e5755a25cb59ec6f45a3b5f41a8
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          workdir: tools/${{ inputs.tool }}
+          args: release --clean
+        env:
+          GORELEASER_CURRENT_TAG: ${{ inputs.version }}
+          UPLOAD_DIR: ${{ inputs.version }}
+          RELEASE_BUCKET: ${{ env.RELEASE_BUCKET }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Mirror artifacts to <tool>/latest/
+        env:
+          TOOL: ${{ inputs.tool }}
+          DIST: tools/${{ inputs.tool }}/dist
+        run: |
+          set -euo pipefail
+          latest_dest="gs://${RELEASE_BUCKET}/${TOOL}/latest/"
+          staging="$(mktemp -d)"
+          for f in "${DIST}"/*.tar.gz; do
+            base="$(basename "$f")"
+            stable="$(echo "$base" | sed -E "s|^(${TOOL})_[^_]+_(.+)\\.tar\\.gz$|\\1_\\2.tar.gz|")"
+            cp -- "$f" "${staging}/${stable}"
+          done
+          ( cd "${staging}" && sha256sum -- *.tar.gz > checksums.txt )
+          gcloud storage cp "${staging}"/* "${latest_dest}"
+
+  # -----------------------------------------------------------------
+  # Main push → publish tools/install.sh to bucket root so users can do:
+  #   curl -fsSL https://storage.googleapis.com/$BUCKET/install.sh | bash -s <tool>
+  # -----------------------------------------------------------------
+  install-script:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
+        with:
+          workload_identity_provider: ${{ vars.GCPV2_GITHUB_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
+
+      - name: Upload install.sh to bucket root
+        run: |
+          gcloud storage cp \
+            --content-type="text/x-shellscript" \
+            --cache-control="no-cache, max-age=0" \
+            tools/install.sh \
+            "gs://${RELEASE_BUCKET}/install.sh"
