@@ -1,0 +1,5 @@
+{
+  "tools/mzcld": "0.1.0",
+  "tools/mozcloud-mcp": "0.1.0",
+  "tools/render-diff": "0.3.4"
+}
