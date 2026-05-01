@@ -6,6 +6,18 @@ This guide documents common configuration patterns for mozcloud chart migrations
 
 **CRITICAL: Only include an nginx container in the migrated chart if the original chart already has one.** Do not add nginx simply because mozcloud supports it — doing so introduces an unnecessary container that was not part of the original workload.
 
+If the original chart has no nginx container, explicitly disable it in the workload:
+
+```yaml
+mozcloud:
+  workloads:
+    <workload-name>:
+      nginx:
+        enabled: false
+```
+
+This is required — omitting the `nginx` key is not sufficient; nginx must be explicitly disabled.
+
 Mozcloud provides a **default nginx configuration** for sidecar containers. Use mozcloud's default unless you have specific customization requirements.
 
 ### When to Use Mozcloud Default Nginx
