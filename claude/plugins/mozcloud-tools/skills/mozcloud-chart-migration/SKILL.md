@@ -25,6 +25,7 @@ This chart is stored in an OCI repository `oci://us-west1-docker.pkg.dev/moz-fx-
 We want to use the latest version of the `mozcloud` chart.
    - Call `helm_chart_latest_version` to confirm the latest version before starting any changes.
    - If the nginx image provided in the custom chart is `us-west1-docker.pkg.dev/moz-fx-platform-artifacts/platform-shared-images/nginx-unprivileged:1.22` we can ignore that version and use the latest from the `mozcloud` chart.
+   - **Do NOT add an nginx container during migration if the existing chart does not already include one.** Only migrate nginx if it is present in the original chart's templates or values. Adding nginx that wasn't there before introduces unnecessary containers.
 We do not want any loss of rendered resources.
   - If there are 10 rendered manifests with the custom chart, there should be 10 or more after our migration.
 
@@ -653,6 +654,7 @@ Common issues and solutions:
 6. **Documentation**: Update migration docs at each milestone for clear handoff
 7. **Safety**: Never commit - user reviews first
 8. **No Ingress → Gateway Migration**: If the chart uses `Ingress`, keep `Ingress`. Never suggest switching to Gateway API (HTTPRoute) as part of a chart migration — that is a separate infrastructure change requiring its own planning and approval.
+9. **No nginx injection**: Only include an nginx container in the migrated chart if the original chart already has one. Do not add nginx that wasn't there before.
 
 ### Reference Documentation
 - [Mozcloud Chart Reference](references/mozcloud-chart-reference.md) - Chart details, schema, patterns
