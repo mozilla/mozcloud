@@ -27,6 +27,8 @@ We want to use the latest version of the `mozcloud` chart.
    - If the nginx image provided in the custom chart is `us-west1-docker.pkg.dev/moz-fx-platform-artifacts/platform-shared-images/nginx-unprivileged:1.22` we can ignore that version and use the latest from the `mozcloud` chart.
 We do not want any loss of rendered resources.
   - If there are 10 rendered manifests with the custom chart, there should be 10 or more after our migration.
+
+**CRITICAL: Do NOT migrate Ingress resources to Gateway API (HTTPRoute).** If the existing chart uses `Ingress`, keep it as `Ingress` in the migrated chart. Switching from Ingress to Gateway API is a significant infrastructure change that requires separate planning and approval outside of a chart migration — it is not a migration task.
 Only work on a single environment values file at one time.
 Our main goal is to end up with a chart that has no templates if possible. The values files should contain all the configuration required to successfully render manifests with the `mozcloud` chart.
 
@@ -650,6 +652,7 @@ Common issues and solutions:
 5. **Validation**: Test thoroughly with `render-diff` before suggesting commit
 6. **Documentation**: Update migration docs at each milestone for clear handoff
 7. **Safety**: Never commit - user reviews first
+8. **No Ingress → Gateway Migration**: If the chart uses `Ingress`, keep `Ingress`. Never suggest switching to Gateway API (HTTPRoute) as part of a chart migration — that is a separate infrastructure change requiring its own planning and approval.
 
 ### Reference Documentation
 - [Mozcloud Chart Reference](references/mozcloud-chart-reference.md) - Chart details, schema, patterns
