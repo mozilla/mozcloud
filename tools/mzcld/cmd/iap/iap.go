@@ -88,6 +88,9 @@ func runIAP(cmd *cobra.Command, _ []string) error {
 		if err != nil {
 			return err
 		}
+		if _, err := ts.Token(); err != nil {
+			return fmt.Errorf("cannot get IAP token: %w\n\nCheck that your credentials are valid / re-authenticate with:\n\tgcloud auth login", err)
+		}
 		return runProxy(ctx, hostFlag, portFlag, ts)
 	}
 
