@@ -59,6 +59,31 @@ render-diff --path ./charts/my-app --values values-dev.yaml
 render-diff --path ./charts/my-app --values values-dev.yaml --semantic
 ```
 
+### [mzcld](./tools/mzcld/)
+
+Unified CLI for MozCloud platform operations.
+
+```bash
+go install github.com/mozilla/mozcloud/tools/mzcld@latest
+
+# verify local environment (tools, OCI auth)
+mzcld init
+
+# generate an IAP token or start a local proxy for IAP-protected services
+mzcld iap
+
+# request temporary elevated access via Privileged Access Manager
+mzcld jit
+
+# read secrets from Google Secret Manager
+mzcld gsm
+
+# interactively install Claude Code skills, agents, and the MCP server
+mzcld claude install
+```
+
+See the [mzcld README](./tools/mzcld/README.md) for full usage.
+
 ### [mozcloud-mcp](./tools/mozcloud-mcp/)
 
 An [MCP](https://modelcontextprotocol.io) server that exposes Helm chart operations, OCI registry tooling, render-diff, and mozcloud migration utilities to Claude Code and other AI coding assistants.
