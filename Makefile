@@ -4,6 +4,7 @@
 #
 # Usage:
 #   make update_crds   # clone/update CRDs-catalog and run extractor, copy extracted CRDs into crdSchemas
+#   make upload_crds   # rsync $(MOZCLOUD_SCHEMAS_DIR) to gs://$(RELEASE_BUCKET)/$(CRDS_BUCKET_PREFIX)/
 #   make clean     # remove cloned CRDs-catalog cache
 
 SHELL := /usr/bin/env bash
@@ -14,27 +15,34 @@ CRDS_CATALOG_REPO ?= https://github.com/datreeio/CRDs-catalog.git
 CRDS_CATALOG_REF  ?= 808cecce07adf438cde06b413250be548981321c # Pinning to a specific commit
 CRDS_CATALOG_DIR  ?= .cache/CRDs-catalog
 
-MOZCLOUD_DIR ?= ../mozcloud
+MOZCLOUD_DIR ?= .
 MOZCLOUD_SCHEMAS_DIR ?= $(MOZCLOUD_DIR)/crdSchemas
 TARGET_DIR   ?= $(MOZCLOUD_DIR)/.cache/crdSchemas
+
+# Public GCS bucket — same one used by the release workflow for tool binaries.
+RELEASE_BUCKET      ?= moz-fx-platform-shared-global-mozcloud-tools
+CRDS_BUCKET_PREFIX  ?= crdSchemas
 
 # Requirements
 GIT      ?= git
 KUBECTL  ?= kubectl
 PYTHON3  ?= python3
+GSUTIL   ?= gsutil
 
-.PHONY: clone checkout_catalog extract copy clean update_crds help
+.PHONY: clone checkout_catalog extract copy clean update_crds upload_crds help
 .DEFAULT_GOAL := help
 
 help:
 	@echo "Targets:"
 	@echo "  make update_crds - Clone/update CRDs-catalog and copy extracted CRDs into $(MOZCLOUD_SCHEMAS_DIR)"
+	@echo "  make upload_crds - Rsync $(MOZCLOUD_SCHEMAS_DIR) to gs://$(RELEASE_BUCKET)/$(CRDS_BUCKET_PREFIX)/"
 	@echo "  make clean       - Remove local CRDs-catalog clone"
 	@echo ""
 	@echo "Requirements:"
 	@echo "  - python3 (required by CRD extractor script)"
 	@echo "  - kubectl (uses current kube context)"
 	@echo "  - git"
+	@echo "  - gsutil (required by upload_crds; auth via gcloud auth login or ADC)"
 	@echo ""
 
 clone:
@@ -73,6 +81,15 @@ copy:
 	@cp -r $(TARGET_DIR)/ $(MOZCLOUD_SCHEMAS_DIR)
 
 update_crds: clone extract copy
+
+upload_crds:
+	@test -d "$(MOZCLOUD_SCHEMAS_DIR)" || { \
+		echo "Schemas directory not found: $(MOZCLOUD_SCHEMAS_DIR)"; \
+		echo "Run 'make update_crds' first."; \
+		exit 1; \
+	}
+	@echo "Syncing $(MOZCLOUD_SCHEMAS_DIR) -> gs://$(RELEASE_BUCKET)/$(CRDS_BUCKET_PREFIX)/"
+	@$(GSUTIL) -m rsync -r -d "$(MOZCLOUD_SCHEMAS_DIR)" "gs://$(RELEASE_BUCKET)/$(CRDS_BUCKET_PREFIX)"
 
 clean:
 	@rm -rf "$(CRDS_CATALOG_DIR)"
