@@ -2,10 +2,7 @@
 # Uses your current kubectl context and should be run against multiple clusters to collect all MozCloud CRDs
 # These CRDs are used by our helm CI to validate manifests /w Kubeconform
 #
-# Usage:
-#   make update_crds   # clone/update CRDs-catalog and run extractor, copy extracted CRDs into crdSchemas
-#   make upload_crds   # rsync $(MOZCLOUD_SCHEMAS_DIR) to gs://$(RELEASE_BUCKET)/$(CRDS_BUCKET_PREFIX)/
-#   make clean     # remove cloned CRDs-catalog cache
+# Run `make help` for available targets.
 
 SHELL := /usr/bin/env bash
 .ONESHELL:
@@ -27,7 +24,7 @@ CRDS_BUCKET_PREFIX  ?= crdSchemas
 GIT      ?= git
 KUBECTL  ?= kubectl
 PYTHON3  ?= python3
-GSUTIL   ?= gsutil
+GCLOUD   ?= gcloud
 
 .PHONY: clone checkout_catalog extract copy clean update_crds upload_crds help
 .DEFAULT_GOAL := help
@@ -42,7 +39,7 @@ help:
 	@echo "  - python3 (required by CRD extractor script)"
 	@echo "  - kubectl (uses current kube context)"
 	@echo "  - git"
-	@echo "  - gsutil (required by upload_crds; auth via gcloud auth login or ADC)"
+	@echo "  - gcloud (required by upload_crds; auth via gcloud auth login or ADC)"
 	@echo ""
 
 clone:
@@ -88,8 +85,25 @@ upload_crds:
 		echo "Run 'make update_crds' first."; \
 		exit 1; \
 	}
+	@if [ -z "$$(find "$(MOZCLOUD_SCHEMAS_DIR)" -mindepth 1 -name '*.json' -print -quit)" ]; then \
+		echo "Schemas directory is empty: $(MOZCLOUD_SCHEMAS_DIR)"; \
+		echo "Run 'make update_crds' first."; \
+		exit 1; \
+	fi
+	@if [ -z "$${CI:-}" ]; then \
+		echo "WARNING: This target publishes to the public production bucket"; \
+		echo "  gs://$(RELEASE_BUCKET)/$(CRDS_BUCKET_PREFIX)/"; \
+		echo "and is normally run by the sync-crds CI workflow on merges to main."; \
+		echo "Running locally will overwrite the in-bucket schemas with whatever is"; \
+		echo "in $(MOZCLOUD_SCHEMAS_DIR), and prune anything not present locally."; \
+		echo ""; \
+		printf "Continue? [y/N] "; \
+		read -r reply; \
+		case "$$reply" in y|Y|yes|YES) ;; *) echo "Aborted."; exit 1 ;; esac; \
+	fi
 	@echo "Syncing $(MOZCLOUD_SCHEMAS_DIR) -> gs://$(RELEASE_BUCKET)/$(CRDS_BUCKET_PREFIX)/"
-	@$(GSUTIL) -m rsync -r -d "$(MOZCLOUD_SCHEMAS_DIR)" "gs://$(RELEASE_BUCKET)/$(CRDS_BUCKET_PREFIX)"
+	@$(GCLOUD) storage rsync --recursive --delete-unmatched-destination-objects \
+		"$(MOZCLOUD_SCHEMAS_DIR)" "gs://$(RELEASE_BUCKET)/$(CRDS_BUCKET_PREFIX)/"
 
 clean:
 	@rm -rf "$(CRDS_CATALOG_DIR)"
