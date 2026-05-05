@@ -1,0 +1,50 @@
+name: sync-crds
+
+# Mirrors the in-repo crdSchemas/ tree to the public GCS bucket so consumers
+# (kubeconform, tooling) can fetch schemas without cloning the repo.
+#
+# Decoupled from release.yaml because schema updates aren't tied to tool
+# releases — they land whenever someone runs `make update_crds` and commits
+# the result.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "crdSchemas/**"
+      - "Makefile"
+      - ".github/workflows/sync-crds.yaml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions: {}
+
+env:
+  RELEASE_BUCKET: "moz-fx-platform-shared-global-mozcloud-tools"
+  WIF_SERVICE_ACCOUNT: "bucket-object-user@moz-fx-platform-artifacts.iam.gserviceaccount.com"
+  CRDS_BUCKET_PREFIX: "crdSchemas"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
+        with:
+          workload_identity_provider: ${{ vars.GCPV2_GITHUB_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v2
+
+      - name: Upload CRD schemas
+        run: make upload_crds
