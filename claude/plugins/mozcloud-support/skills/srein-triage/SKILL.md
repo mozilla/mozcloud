@@ -230,9 +230,44 @@ For Needs Clarification issues where the last comment is 5+ business days old (7
 
 After writing the file, print the file path so the triager can open it.
 
+## Step 6: Publish to GCS (full triage only)
+
+**Skip this step if a specific issue key was provided** — single-issue runs produce a partial report and should not overwrite the published index.
+
+For full backlog triages, copy the report to two locations in `gs://protosaur-stage-iap-static-website/srein-triage/`:
+- `index.html` — the canonical "latest" published report
+- `srein_YYYYMMDD_triage_report.html` — same filename as the local file, for history
+
+### Preflight checks
+
+Before attempting any upload, verify both of these. If either fails, print a clear warning, skip the upload, and still report the local file path — do not error out.
+
+1. **gcloud installed:** `command -v gcloud`
+2. **User logged in:** `gcloud auth list --filter=status:ACTIVE --format="value(account)"` returns a non-empty account.
+
+Example warnings:
+- `gcloud not found in PATH — skipping GCS upload. Local report saved at <path>.`
+- `No active gcloud account (run 'gcloud auth login') — skipping GCS upload. Local report saved at <path>.`
+
+### Upload
+
+Once preflight passes, run:
+
+```bash
+gcloud storage cp srein_triage/srein_YYYYMMDD_triage_report.html \
+  gs://protosaur-stage-iap-static-website/srein-triage/srein_YYYYMMDD_triage_report.html
+
+gcloud storage cp srein_triage/srein_YYYYMMDD_triage_report.html \
+  gs://protosaur-stage-iap-static-website/srein-triage/index.html
+```
+
+After upload, print the HTTPS URLs (the bucket is served at `https://protosaur.dev/srein-triage/`) so the triager can open or share them:
+- `https://protosaur.dev/srein-triage/` (latest)
+- `https://protosaur.dev/srein-triage/srein_YYYYMMDD_triage_report.html` (this run)
+
 ## Important Reminders
 
-- You are suggestion-only. Never modify tickets, add comments, change status, or take any action.
+- You are suggestion-only with respect to JIRA. Never modify tickets, add comments, or change status. Publishing the generated HTML report to GCS (per Step 6) is the only side effect this skill is allowed to produce.
 - Always fetch the Confluence pages fresh — never rely on cached or remembered content.
 - The Triage FAQ has service-specific guidance and example tickets that help calibrate routing decisions. Use them.
 - When in doubt about routing, say so and explain the ambiguity. It's better to flag uncertainty than to give a confident wrong answer.
